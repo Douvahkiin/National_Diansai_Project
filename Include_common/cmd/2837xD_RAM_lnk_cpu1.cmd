@@ -47,11 +47,7 @@ PAGE 1 :
    RAMGS3      : origin = 0x00F000, length = 0x001000
    RAMGS4      : origin = 0x010000, length = 0x001000
    RAMGS5      : origin = 0x011000, length = 0x001000
-   RAMGS6      : origin = 0x012000, length = 0x001000
-   RAMGS7      : origin = 0x013000, length = 0x001000
-   RAMGS8      : origin = 0x014000, length = 0x001000
-   RAMGS9      : origin = 0x015000, length = 0x001000
-   RAMGS10     : origin = 0x016000, length = 0x001000
+   RAMGS6      : origin = 0x012000, length = 0x005000
 
 //   RAMGS11     : origin = 0x017000, length = 0x000FF8   /* Uncomment for F28374D, F28376D devices */
 
@@ -92,7 +88,7 @@ SECTIONS
    .sysmem          : > RAMLS5,    PAGE = 1
 #else
    .pinit           : > RAMM0,     PAGE = 0
-   .ebss            : > RAMLS5,    PAGE = 1
+   .ebss            : > RAMGS6,    PAGE = 1
    .econst          : > RAMLS5,    PAGE = 1
    .esysmem         : > RAMLS5,    PAGE = 1
 #endif
