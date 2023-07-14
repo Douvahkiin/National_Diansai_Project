@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/Include_common",
+                "${workspaceFolder}/Include_headers",
+                "${workspaceFolder}/Include_source",
+                "D:/ti/ccs1230/ccs/tools/compiler/ti-cgt-c2000_22.6.0.LTS/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "_LAUNCHXL_F28379D",
+                "CPU1"
+            ],
+            "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++11"
+        }
+    ],
+    "version": 4
+}

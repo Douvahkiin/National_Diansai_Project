@@ -1,0 +1,10 @@
+{
+  "C_Cpp.errorSquiggles": "enabled",
+  "files.associations": {
+    "*.m": "matlab",
+    "*.cjson": "jsonc",
+    "*.wxss": "css",
+    "*.wxs": "javascript",
+    "epwm_setup.h": "c"
+  }
+}
