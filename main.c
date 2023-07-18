@@ -4,7 +4,11 @@
 #include "ADC_setup.h"
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
+#include "filters.h"
 #include "math.h"
+#include "pid.h"
+#include "pll.h"
+#include "pr.h"
 
 //
 // Function Prototypes
@@ -14,26 +18,59 @@ interrupt void adca1_isr(void);
 //
 // Defines
 //
-#define RESULTS_BUFFER_SIZE 512
+#define BUFFER_SIZE 512
 
 //
 // Globals
 //
-Uint16 ADCAResults0[RESULTS_BUFFER_SIZE];
-float32 ADCAResults0_converted[RESULTS_BUFFER_SIZE];
-Uint16 ADCAResults1[RESULTS_BUFFER_SIZE];
-float32 ADCAResults1_converted[RESULTS_BUFFER_SIZE];
+Uint16 ADCAResults0[BUFFER_SIZE];
+float32 ADCAResults0_converted[BUFFER_SIZE];
+Uint16 ADCAResults1[BUFFER_SIZE];
+float32 ADCAResults1_converted[BUFFER_SIZE];
 
-Uint16 ADCBResults0[RESULTS_BUFFER_SIZE];
-float32 ADCBResults0_converted[RESULTS_BUFFER_SIZE];
-Uint16 ADCBResults1[RESULTS_BUFFER_SIZE];
-float32 ADCBResults1_converted[RESULTS_BUFFER_SIZE];
+Uint16 ADCBResults0[BUFFER_SIZE];
+float32 ADCBResults0_converted[BUFFER_SIZE];
+Uint16 ADCBResults1[BUFFER_SIZE];
+float32 ADCBResults1_converted[BUFFER_SIZE];
 
 float32 wt = 0;
 
 Uint16 frameIndex;
 
 volatile Uint16 bufferFull;
+
+float32 Uref_u2 = 1.461;
+float32 K_u2 = 27.15232;
+float32 Uref_i = 1.504;
+float32 K_i = 4.30203;
+float32 Uref_udc = 1.448;
+float32 K_udc = 27.32057;
+float32 std_ig;
+float32 Udc;
+float32 std_Udc = 10;
+float32 PWM_Input;
+float32 pid_n1_input;
+float32 pll_input;
+
+float32 U2_result[BUFFER_SIZE];
+float32 Udc_result[BUFFER_SIZE];
+float32 ig_result[BUFFER_SIZE];
+float32 pll_result[BUFFER_SIZE];
+float32 pid_n1_result[BUFFER_SIZE];
+float32 err[BUFFER_SIZE];
+float32 pr_out[BUFFER_SIZE];
+
+float32 alpha1 = 0.5;
+float32 alpha2 = 0.5;
+float32 alpha3 = 0.5;
+float32 alpha4 = 0.5;
+
+float32 outputPre1 = 0;
+float32 outputPre2 = 0;
+float32 outputPre3 = 0;
+float32 outputPre4 = 0;
+
+float32 inverter_std_I = 1.2;
 
 void main(void) {
   // Initialize System Control: PLL, WatchDog, enable Peripheral Clocks
@@ -43,6 +80,13 @@ void main(void) {
   InitGpio();
   InitEPwm1Gpio();
   InitEPwm2Gpio();
+  //
+  // Enable an GPIO output on GPIO22, set it high
+  //
+  // GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;   // Enable pullup on GPIO22
+  // GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
+  // GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
+  // GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
   DINT;
@@ -87,6 +131,14 @@ void main(void) {
   EALLOW;
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
 
+  // pll, pid init
+  pll_Init(314.1593, 2);  // 50Hz
+  pid_n1_Init(1, 1, 0);   // 直流端电压PI控制
+  // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
+  pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
+  // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
+  // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
+
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
@@ -122,14 +174,45 @@ interrupt void adca1_isr(void) {
   ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
   ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
 
+  ADCAResults0_converted[frameIndex] = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre1, alpha1);
+  ADCAResults1_converted[frameIndex] = low_pass_filter(ADCAResults1_converted[frameIndex], &outputPre2, alpha2);
+  ADCBResults0_converted[frameIndex] = low_pass_filter(ADCBResults0_converted[frameIndex], &outputPre3, alpha3);
+  ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
+
+  U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
+  ig_result[frameIndex] = -(ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
+  Udc_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_udc) * K_udc;
+
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + 0.0314159269;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
-  changeDuty_phase(0);
+  pll_input = U2_result[frameIndex];
+  // pll 的结果
+  pll_result[frameIndex] = pll_Run(pll_input);
+  // 用正弦便于判断正确
+  pll_result[frameIndex] = cos(pll_result[frameIndex]);
+
+  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  // err[frameIndex] = pll_result[frameIndex] * inverter_std_I - ig_result[frameIndex];  // 已并网, 跟踪软件产生的波
+  float32 pr_input = err[frameIndex];  // 直接通过 err
+  pr_out[frameIndex] = pr_run(pr_input);
+
+  changeDuty_value(pr_out[frameIndex]);
+  // /* 对Udc进行PID控制 */
+  // pid_n1_input = -(std_Udc - Udc);
+  // pid_n1_result = pid_n1_Run(pid_n1_input);
+  // if (pid_n1_result > 50) {
+  //   pid_n1_result = 50;
+  // } else if (pid_n1_result < -50) {
+  //   pid_n1_result = -50;
+  // }
+
+  // changeDuty_value(pid_n1_result[frameIndex]);
+  // changeDuty_phase(wt);
 
   frameIndex++;
-  if (RESULTS_BUFFER_SIZE <= frameIndex) {
+  if (BUFFER_SIZE <= frameIndex) {
     frameIndex = 0;
     bufferFull = 1;
   }

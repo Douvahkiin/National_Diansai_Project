@@ -78,7 +78,7 @@ void SetupADCEpwm(void) {
   // Select the channels to convert and end of conversion flag
   //
   EALLOW;
-  AdcaRegs.ADCSOC0CTL.bit.CHSEL = ADC_CHANNEL_2;  // SOC0 will convert pin A0
+  AdcaRegs.ADCSOC0CTL.bit.CHSEL = ADC_CHANNEL_2;  // SOC0 will convert pin A2
   AdcaRegs.ADCSOC0CTL.bit.ACQPS = acqps;          // sample window is 100 SYSCLK cycles
   AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 5;            // trigger on ePWM1 SOCA/C
   AdcbRegs.ADCSOC0CTL.bit.CHSEL = ADC_CHANNEL_2;
