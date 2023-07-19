@@ -10,5 +10,9 @@
 void ConfigureEPWM(void);
 void changeDuty_phase(float32 wt);
 void changeDuty_value(float32 val);
+void disableEpwm1Gpio(void);
+void disableEpwm2Gpio(void);
+void enableEpwm1Gpio(void);
+void enableEpwm2Gpio(void);
 
 #endif  // !_EPWM_SET_

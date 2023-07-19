@@ -42,10 +42,10 @@ void pid_n1_Init(float32 p, float32 i, float32 d) {
 float32 pid_n1_Run(float32 err) {
   pid_n1.integral += err * pid_n1.Ts;
   pid_n1.derivative = (err - pid_n1.err_last) / pid_n1.Ts;
-  if (pid_n1.integral > 100) {
-    pid_n1.integral = 100;
-  } else if (pid_n1.integral < -100) {
-    pid_n1.integral = -100;
+  if (pid_n1.integral > 10) {
+    pid_n1.integral = 10;
+  } else if (pid_n1.integral < -10) {
+    pid_n1.integral = -10;
   }
 
   // pid_n1.uk is u(k)

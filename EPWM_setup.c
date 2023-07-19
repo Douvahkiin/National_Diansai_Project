@@ -119,3 +119,31 @@ void changeDuty_value(float32 val) {
   EPwm1Regs.CMPA.bit.CMPA = duty1;
   EPwm2Regs.CMPA.bit.CMPA = duty2;
 }
+
+void disableEpwm1Gpio(void) {
+  EALLOW;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 0;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 0;
+  EDIS;
+}
+
+void disableEpwm2Gpio(void) {
+  EALLOW;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 0;
+  EDIS;
+}
+
+void enableEpwm1Gpio(void) {
+  EALLOW;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 1;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 1;
+  EDIS;
+}
+
+void enableEpwm2Gpio(void) {
+  EALLOW;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 1;
+  GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 1;
+  EDIS;
+}

@@ -60,10 +60,10 @@ float32 pid_n1_result[BUFFER_SIZE];
 float32 err[BUFFER_SIZE];
 float32 pr_out[BUFFER_SIZE];
 
-float32 alpha1 = 0.5;
-float32 alpha2 = 0.5;
-float32 alpha3 = 0.5;
-float32 alpha4 = 0.5;
+float32 alpha1 = 1;
+float32 alpha2 = 1;
+float32 alpha3 = 1;
+float32 alpha4 = 1;
 
 float32 outputPre1 = 0;
 float32 outputPre2 = 0;
@@ -71,6 +71,13 @@ float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
 float32 inverter_std_I = 1.2;
+float32 rectifier_std_I = 5;
+
+/* 启动判断的相关变量 */
+bool b1;
+bool b2;
+bool b3 = 0;
+bool b4 = 0;
 
 void main(void) {
   // Initialize System Control: PLL, WatchDog, enable Peripheral Clocks
@@ -132,13 +139,15 @@ void main(void) {
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
 
   // pll, pid init
-  pll_Init(314.1593, 2);  // 50Hz
-  pid_n1_Init(1, 1, 0);   // 直流端电压PI控制
+  pll_Init(314.1593, 2);    // 50Hz
+  pid_n1_Init(0.1, 10, 0);  // 直流端电压PI控制
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
-  pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
+  // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
   // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
-  // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
+  pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
 
+  disableEpwm1Gpio();
+  disableEpwm2Gpio();
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
@@ -180,33 +189,49 @@ interrupt void adca1_isr(void) {
   ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = -(ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + 0.0314159269;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
+  // pll input 为电网电压
   pll_input = U2_result[frameIndex];
   // pll 的结果
   pll_result[frameIndex] = pll_Run(pll_input);
   // 用正弦便于判断正确
   pll_result[frameIndex] = cos(pll_result[frameIndex]);
 
-  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
-  // err[frameIndex] = pll_result[frameIndex] * inverter_std_I - ig_result[frameIndex];  // 已并网, 跟踪软件产生的波
-  float32 pr_input = err[frameIndex];  // 直接通过 err
-  pr_out[frameIndex] = pr_run(pr_input);
+  /* 对Udc进行PID控制 */
+  pid_n1_input = (std_Udc - Udc_result[frameIndex]);
+  pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
+  pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 5, -5);
 
-  changeDuty_value(pr_out[frameIndex]);
-  // /* 对Udc进行PID控制 */
-  // pid_n1_input = -(std_Udc - Udc);
-  // pid_n1_result = pid_n1_Run(pid_n1_input);
-  // if (pid_n1_result > 50) {
-  //   pid_n1_result = 50;
-  // } else if (pid_n1_result < -50) {
-  //   pid_n1_result = -50;
-  // }
+  /* PR控制器启动判断, 启动后变量 b2 自锁 */
+  b1 = fabsf(U2_result[frameIndex]) >= 5;
+  b2 = b1 || b3;
+  b3 = b2;
+
+  // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  // Udc的PID控制输出值作为电流的跟踪幅值
+  // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+
+  if (b2) {                              // b2为真时, 打开PR以及PWM输出
+    float32 pr_input = err[frameIndex];  // 直接通过 err
+    pr_out[frameIndex] = pr_run(pr_input);
+    // pr_out[frameIndex] = pr_input;  // test pure P controller
+    if (!b4) {
+      enableEpwm1Gpio();
+      enableEpwm2Gpio();
+      b4 = 1;
+    }
+    changeDuty_value(pr_out[frameIndex]);
+  } else {
+    disableEpwm1Gpio();
+    disableEpwm2Gpio();
+  }
 
   // changeDuty_value(pid_n1_result[frameIndex]);
   // changeDuty_phase(wt);
