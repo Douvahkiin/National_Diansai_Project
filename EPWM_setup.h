@@ -8,8 +8,8 @@
 #define PWM_MID_COUNT (PWM_MAX_COUNT / 2)
 
 void ConfigureEPWM(void);
-void changeDuty_phase(float32 wt);
-void changeDuty_value(float32 val);
+void changeCMP_phase(float32 wt);
+void changeCMP_value(float32 val);
 void disableEpwm1Gpio(void);
 void disableEpwm2Gpio(void);
 void enableEpwm1Gpio(void);

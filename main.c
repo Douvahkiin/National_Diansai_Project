@@ -88,12 +88,13 @@ void main(void) {
   InitEPwm1Gpio();
   InitEPwm2Gpio();
   //
-  // Enable an GPIO output on GPIO22, set it high
+  // Enable an GPIO output on GPIO22, set it high/low
   //
-  // GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;   // Enable pullup on GPIO22
-  // GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
-  // GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
-  // GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
+  GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;   // Enable pullup on GPIO22
+  GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
+  GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
+  GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
+  GpioDataRegs.GPADAT.bit.GPIO22 = 1;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
   DINT;
@@ -146,8 +147,8 @@ void main(void) {
   // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
   pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
 
-  disableEpwm1Gpio();
-  disableEpwm2Gpio();
+  // disableEpwm1Gpio();
+  // disableEpwm2Gpio();
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
@@ -188,53 +189,55 @@ interrupt void adca1_isr(void) {
   ADCBResults0_converted[frameIndex] = low_pass_filter(ADCBResults0_converted[frameIndex], &outputPre3, alpha3);
   ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
-  U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
-  Udc_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_udc) * K_udc;
-
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + 0.0314159269;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
-  // pll input 为电网电压
-  pll_input = U2_result[frameIndex];
-  // pll 的结果
-  pll_result[frameIndex] = pll_Run(pll_input);
-  // 用正弦便于判断正确
-  pll_result[frameIndex] = cos(pll_result[frameIndex]);
+  // U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
+  // ig_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
+  // Udc_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
-  /* 对Udc进行PID控制 */
-  pid_n1_input = (std_Udc - Udc_result[frameIndex]);
-  pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
-  pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 5, -5);
+  // // pll input 为电网电压
+  // pll_input = U2_result[frameIndex];
+  // // pll 的结果
+  // pll_result[frameIndex] = pll_Run(pll_input);
+  // // 用正弦便于判断正确
+  // pll_result[frameIndex] = cos(pll_result[frameIndex]);
 
-  /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U2_result[frameIndex]) >= 5;
-  b2 = b1 || b3;
-  b3 = b2;
+  // /* 对Udc进行PID控制 */
+  // pid_n1_input = (std_Udc - Udc_result[frameIndex]);
+  // pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
+  // pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 5, -5);
 
-  // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
-  // Udc的PID控制输出值作为电流的跟踪幅值
-  // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
-  err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // /* PR控制器启动判断, 启动后变量 b2 自锁 */
+  // b1 = fabsf(U2_result[frameIndex]) >= 5;
+  // b2 = b1 || b3;
+  // b3 = b2;
 
-  if (b2) {                              // b2为真时, 打开PR以及PWM输出
-    float32 pr_input = err[frameIndex];  // 直接通过 err
-    pr_out[frameIndex] = pr_run(pr_input);
-    // pr_out[frameIndex] = pr_input;  // test pure P controller
-    if (!b4) {
-      enableEpwm1Gpio();
-      enableEpwm2Gpio();
-      b4 = 1;
-    }
-    changeDuty_value(pr_out[frameIndex]);
-  } else {
-    disableEpwm1Gpio();
-    disableEpwm2Gpio();
-  }
+  // // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  // // Udc的PID控制输出值作为电流的跟踪幅值
+  // // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
-  // changeDuty_value(pid_n1_result[frameIndex]);
-  // changeDuty_phase(wt);
+  // if (b2) {                              // b2为真时, 打开PR以及PWM输出
+  //   float32 pr_input = err[frameIndex];  // 直接通过 err
+  //   pr_out[frameIndex] = pr_run(pr_input);
+  //   // pr_out[frameIndex] = pr_input;  // test pure P controller
+  //   if (!b4) {
+  //     enableEpwm1Gpio();
+  //     enableEpwm2Gpio();
+  //     b4 = 1;
+  //   }
+  //   changeCMP_value(pr_out[frameIndex]);
+  // } else {
+  //   disableEpwm1Gpio();
+  //   disableEpwm2Gpio();
+  // }
+
+  // changeCMP_value(pid_n1_result[frameIndex]);
+  // changeCMP_phase(3 * 3.14159 / 2 * 0.9);
+  // changeCMP_phase(0);
+  changeCMP_value(-0.8);
 
   frameIndex++;
   if (BUFFER_SIZE <= frameIndex) {

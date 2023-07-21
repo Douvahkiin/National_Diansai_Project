@@ -43,8 +43,8 @@ void ConfigureEPWM(void) {
   EPwm1Regs.DBCTL.bit.IN_MODE = DBA_ALL;          // 只接受AQ出来的EpwmxA
   EPwm1Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC;       // active high complementary
   EPwm1Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;  // enable s1, s0
-  EPwm1Regs.DBRED.bit.DBRED = 200;
-  EPwm1Regs.DBFED.bit.DBFED = 200;
+  EPwm1Regs.DBRED.bit.DBRED = 0;
+  EPwm1Regs.DBFED.bit.DBFED = 0;
 
   //
   // Setup ET. Assumes ePWM clock is already enabled
@@ -96,26 +96,28 @@ void ConfigureEPWM(void) {
   EPwm2Regs.DBCTL.bit.IN_MODE = DBA_ALL;          // 只接受AQ出来的EpwmxA
   EPwm2Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC;       // active high complementary
   EPwm2Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;  // enable s1, s0
-  EPwm2Regs.DBRED.bit.DBRED = 200;
-  EPwm2Regs.DBFED.bit.DBFED = 200;
+  EPwm2Regs.DBRED.bit.DBRED = 0;
+  EPwm2Regs.DBFED.bit.DBFED = 0;
 
   // freeze counter
   EPwm2Regs.TBCTL.bit.CTRMODE = 3;  // freeze counter
   EDIS;
 }
 
-void changeDuty_phase(float32 wt) {
+void changeCMP_phase(float32 wt) {
   Uint16 duty1 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
-  Uint16 duty2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  // Uint16 duty2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  Uint16 duty2 = 0;
   EPwm1Regs.CMPA.bit.CMPA = duty1;
   EPwm2Regs.CMPA.bit.CMPA = duty2;
 }
 
 /// @brief 改变PWM占空比
 /// @param val 相当于sin(wt)
-void changeDuty_value(float32 val) {
+void changeCMP_value(float32 val) {
   Uint16 duty1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
-  Uint16 duty2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
+  // Uint16 duty2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
+  Uint16 duty2 = 0;
   EPwm1Regs.CMPA.bit.CMPA = duty1;
   EPwm2Regs.CMPA.bit.CMPA = duty2;
 }
