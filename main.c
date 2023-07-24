@@ -27,11 +27,16 @@ Uint16 ADCAResults0[BUFFER_SIZE];
 float32 ADCAResults0_converted[BUFFER_SIZE];
 Uint16 ADCAResults1[BUFFER_SIZE];
 float32 ADCAResults1_converted[BUFFER_SIZE];
+Uint16 ADCAResults2[BUFFER_SIZE];
+float32 ADCAResults2_converted[BUFFER_SIZE];
 
 Uint16 ADCBResults0[BUFFER_SIZE];
 float32 ADCBResults0_converted[BUFFER_SIZE];
 Uint16 ADCBResults1[BUFFER_SIZE];
 float32 ADCBResults1_converted[BUFFER_SIZE];
+
+Uint16 ADCCResults0[BUFFER_SIZE];
+float32 ADCCResults0_converted[BUFFER_SIZE];
 
 float32 wt = 0;
 
@@ -39,12 +44,12 @@ Uint16 frameIndex;
 
 volatile Uint16 bufferFull;
 
-float32 Uref_u2 = 1.461;
-float32 K_u2 = 27.15232;
-float32 Uref_i = 1.504;
-float32 K_i = 4.30203;
-float32 Uref_udc = 1.448;
-float32 K_udc = 27.32057;
+float32 Uref_u2 = 1.053;
+float32 K_u2 = 140;
+float32 Uref_i = 1.777;
+float32 K_i = 2.175;
+float32 Uref_udc = 1.053;
+float32 K_udc = 140;
 float32 std_ig;
 float32 Udc;
 float32 std_Udc = 10;
@@ -70,7 +75,8 @@ float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
-float32 inverter_std_I = 1.2;
+float32 inverter_std_I = 2;
+float32 inverter_std_U2 = 10;
 float32 rectifier_std_I = 5;
 
 /* 启动判断的相关变量 */
@@ -95,19 +101,16 @@ void main(void) {
   GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
   GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
   GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
-  GpioDataRegs.GPADAT.bit.GPIO22 = 1;
 
   GpioCtrlRegs.GPAPUD.bit.GPIO1 = 0;   // Enable pullup on GPIO1
   GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 0;  // GPIO1 = GPIO1
   GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;   // GPIO1 = output
   GpioDataRegs.GPASET.bit.GPIO1 = 1;   // Load output latch
-  GpioDataRegs.GPADAT.bit.GPIO1 = 1;
 
   GpioCtrlRegs.GPAPUD.bit.GPIO3 = 0;   // Enable pullup on GPIO3
   GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 0;  // GPIO3 = GPIO3
   GpioCtrlRegs.GPADIR.bit.GPIO3 = 1;   // GPIO3 = output
   GpioDataRegs.GPASET.bit.GPIO3 = 1;   // Load output latch
-  GpioDataRegs.GPADAT.bit.GPIO3 = 1;
   EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
@@ -154,8 +157,8 @@ void main(void) {
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
 
   // pll, pid init
-  pll_Init(314.1593, 2);    // 50Hz
-  pid_n1_Init(0.1, 10, 0);  // 直流端电压PI控制
+  pll_Init(314.1593, 2);     // 50Hz
+  pid_n1_Init(0.1, 0.1, 0);  // 直流端电压PI控制
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
   // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
   // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
@@ -183,20 +186,26 @@ void main(void) {
 // adca1_isr - Read ADC Buffer in ISR
 //
 interrupt void adca1_isr(void) {
-  while (AdcaRegs.ADCINTFLG.bit.ADCINT1 == 0 || AdcbRegs.ADCINTFLG.bit.ADCINT1 == 0) {
+  while (AdcaRegs.ADCINTFLG.bit.ADCINT1 == 0 || AdcbRegs.ADCINTFLG.bit.ADCINT1 == 0 || AdccRegs.ADCINTFLG.bit.ADCINT1 == 0) {
   }
   AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
   AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
+  AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
 
   ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT0;
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
   ADCAResults1[frameIndex] = AdcaResultRegs.ADCRESULT1;
   ADCAResults1_converted[frameIndex] = ADCAResults1[frameIndex] * 3.0 / 4096.0;
+  // ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
+  // ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
 
   ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
   ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
   ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
   ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
+
+  // ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
+  // ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
 
   ADCAResults0_converted[frameIndex] = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre1, alpha1);
   ADCAResults1_converted[frameIndex] = low_pass_filter(ADCAResults1_converted[frameIndex], &outputPre2, alpha2);
@@ -204,12 +213,18 @@ interrupt void adca1_isr(void) {
   ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159269;
+  wt = wt + 0.0314159269 / 2;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
-  // U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
-  // ig_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_i) * K_i;
-  // Udc_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_udc) * K_udc;
+  U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
+  ig_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_i) * K_i;
+  Udc_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_udc) * K_udc;
+
+  // /* 整流器控电压 */
+  // float32 std_U2 = inverter_std_U2 * sin(wt);
+  // pid_n1_input = std_U2 - U2_result[frameIndex];
+  // pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
+  // pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 1, -1);
 
   // // pll input 为电网电压
   // pll_input = U2_result[frameIndex];
@@ -228,11 +243,14 @@ interrupt void adca1_isr(void) {
   // b2 = b1 || b3;
   // b3 = b2;
 
-  // // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
   // // Udc的PID控制输出值作为电流的跟踪幅值
   // // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
   // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
+  float32 pr_input = err[frameIndex];
+  pr_out[frameIndex] = pr_run(pr_input);
+  changeCMP_value(pr_out[frameIndex]);
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
   //   float32 pr_input = err[frameIndex];  // 直接通过 err
   //   pr_out[frameIndex] = pr_run(pr_input);
@@ -250,8 +268,10 @@ interrupt void adca1_isr(void) {
 
   // changeCMP_value(pid_n1_result[frameIndex]);
   // changeCMP_phase(3 * 3.14159 / 2 * 0.9);
-  // changeCMP_phase(0);
-  changeCMP_value(-0.8);
+  // changeCMP_phase(wt);
+  // changeCMP_value(-0.8);
+  // GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;
+  // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;
 
   frameIndex++;
   if (BUFFER_SIZE <= frameIndex) {
