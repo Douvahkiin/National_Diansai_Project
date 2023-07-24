@@ -5,7 +5,7 @@
 //                ADC A and ADC B
 //
 void ConfigureADC(void) {
-  /* Configure ADCB */
+  /* Configure ADCA */
   EALLOW;
 
   //
@@ -49,6 +49,32 @@ void ConfigureADC(void) {
   // power up the ADC
   //
   AdcbRegs.ADCCTL1.bit.ADCPWDNZ = 1;
+
+  //
+  // delay for 1ms to allow ADC time to power up
+  //
+  DELAY_US(1000);
+
+  EDIS;
+
+  /* Configure ADCC */
+  EALLOW;
+
+  //
+  // write configurations
+  //
+  AdccRegs.ADCCTL2.bit.PRESCALE = 6;  // set ADCCLK divider to /4
+  AdcSetMode(ADC_ADCC, ADC_RESOLUTION_12BIT, ADC_SIGNALMODE_SINGLE);
+
+  //
+  // Set pulse positions to late
+  //
+  AdccRegs.ADCCTL1.bit.INTPULSEPOS = 1;
+
+  //
+  // power up the ADC
+  //
+  AdccRegs.ADCCTL1.bit.ADCPWDNZ = 1;
 
   //
   // delay for 1ms to allow ADC time to power up

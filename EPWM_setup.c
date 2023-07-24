@@ -15,8 +15,9 @@ void ConfigureEPWM(void) {
   EPwm1Regs.TBCTL.bit.PHSEN = TB_DISABLE;         // Disable phase loading
   EPwm1Regs.TBCTL.bit.PRDLD = TB_SHADOW;
   EPwm1Regs.TBCTL.bit.SYNCOSEL = TB_CTR_ZERO;
-  ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
-  EPwm1Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;     // Clock ratio to SYSCLKOUT
+  //// ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
+  // EPWMCLK already equals to SYSCLK / 2
+  EPwm1Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;  // /1
   EPwm1Regs.TBCTL.bit.CLKDIV = TB_DIV1;
 
   //
@@ -68,8 +69,9 @@ void ConfigureEPWM(void) {
   EPwm2Regs.TBCTL.bit.PHSEN = TB_ENABLE;          // Disable phase loading
   EPwm2Regs.TBCTL.bit.PRDLD = TB_SHADOW;
   EPwm2Regs.TBCTL.bit.SYNCOSEL = TB_SYNC_IN;
-  ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
-  EPwm2Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;     // Clock ratio to SYSCLKOUT
+  //// ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
+  // EPWMCLK already equals to SYSCLK / 2
+  EPwm2Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;  // /1
   EPwm2Regs.TBCTL.bit.CLKDIV = TB_DIV1;
 
   //
@@ -106,8 +108,7 @@ void ConfigureEPWM(void) {
 
 void changeCMP_phase(float32 wt) {
   Uint16 duty1 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
-  // Uint16 duty2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
-  Uint16 duty2 = 0;
+  Uint16 duty2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
   EPwm1Regs.CMPA.bit.CMPA = duty1;
   EPwm2Regs.CMPA.bit.CMPA = duty2;
 }
@@ -116,8 +117,7 @@ void changeCMP_phase(float32 wt) {
 /// @param val 相当于sin(wt)
 void changeCMP_value(float32 val) {
   Uint16 duty1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
-  // Uint16 duty2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
-  Uint16 duty2 = 0;
+  Uint16 duty2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
   EPwm1Regs.CMPA.bit.CMPA = duty1;
   EPwm2Regs.CMPA.bit.CMPA = duty2;
 }

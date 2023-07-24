@@ -90,11 +90,25 @@ void main(void) {
   //
   // Enable an GPIO output on GPIO22, set it high/low
   //
+  EALLOW;
   GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;   // Enable pullup on GPIO22
   GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
   GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
   GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
   GpioDataRegs.GPADAT.bit.GPIO22 = 1;
+
+  GpioCtrlRegs.GPAPUD.bit.GPIO1 = 0;   // Enable pullup on GPIO1
+  GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 0;  // GPIO1 = GPIO1
+  GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;   // GPIO1 = output
+  GpioDataRegs.GPASET.bit.GPIO1 = 1;   // Load output latch
+  GpioDataRegs.GPADAT.bit.GPIO1 = 1;
+
+  GpioCtrlRegs.GPAPUD.bit.GPIO3 = 0;   // Enable pullup on GPIO3
+  GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 0;  // GPIO3 = GPIO3
+  GpioCtrlRegs.GPADIR.bit.GPIO3 = 1;   // GPIO3 = output
+  GpioDataRegs.GPASET.bit.GPIO3 = 1;   // Load output latch
+  GpioDataRegs.GPADAT.bit.GPIO3 = 1;
+  EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
   DINT;
