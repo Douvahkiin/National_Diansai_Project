@@ -18,7 +18,8 @@ interrupt void adca1_isr(void);
 //
 // Defines
 //
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 1024
+#define LITTLE_BUFFER 16
 
 //
 // Globals
@@ -44,12 +45,12 @@ Uint16 frameIndex;
 
 volatile Uint16 bufferFull;
 
-float32 Uref_u2 = 1.053;
-float32 K_u2 = 140;
-float32 Uref_i = 1.568;
-float32 K_i = 20;
-float32 Uref_udc = 1.053;
-float32 K_udc = 140;
+float32 Uref_u2 = 1.251;
+float32 K_u2 = 11;
+float32 Uref_i = 1.466;
+float32 K_i = 4.175;
+float32 Uref_udc = 0;
+float32 K_udc = 11;
 float32 std_ig;
 float32 Udc;
 float32 std_Udc = 10;
@@ -61,9 +62,9 @@ float32 U2_result[BUFFER_SIZE];
 float32 Udc_result[BUFFER_SIZE];
 float32 ig_result[BUFFER_SIZE];
 float32 pll_result[BUFFER_SIZE];
-float32 pid_n1_result[BUFFER_SIZE];
-float32 err[BUFFER_SIZE];
-float32 pr_out[BUFFER_SIZE];
+float32 pid_n1_result[LITTLE_BUFFER];
+float32 err[LITTLE_BUFFER];
+float32 pr_out[LITTLE_BUFFER];
 
 float32 alpha1 = 1;
 float32 alpha2 = 1;
@@ -148,7 +149,7 @@ void main(void) {
 
   // pll, pid init
   pll_Init(314.1593, 2);     // 50Hz
-  pid_n1_Init(0.1, 0.1, 0);  // 直流端电压PI控制
+  pid_n1_Init(0.5, 0.1, 0);  // 直流端电压PI控制
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
   // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
   // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
@@ -186,16 +187,16 @@ interrupt void adca1_isr(void) {
   // ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
   // ADCAResults1[frameIndex] = AdcaResultRegs.ADCRESULT1;
   // ADCAResults1_converted[frameIndex] = ADCAResults1[frameIndex] * 3.0 / 4096.0;
-  // ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
-  // ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
+  ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
+  ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
 
-  // ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
-  // ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
-  ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
-  ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
+  ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
+  ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
+  // ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
+  // ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
 
-  // ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
-  // ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
+  ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
+  ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
 
   // ADCAResults0_converted[frameIndex] = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre1, alpha1);
   // ADCAResults1_converted[frameIndex] = low_pass_filter(ADCAResults1_converted[frameIndex], &outputPre2, alpha2);
@@ -203,12 +204,12 @@ interrupt void adca1_isr(void) {
   // ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159269 / 2;
+  wt = wt + 0.0314159269;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
-  // U2_result[frameIndex] = -(ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
-  // Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
+  U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
+  ig_result[frameIndex] = -(ADCBResults0_converted[frameIndex] - Uref_i) * K_i;
+  Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // /* 整流器控电压 */
   // float32 std_U2 = inverter_std_U2 * sin(wt);
@@ -239,9 +240,12 @@ interrupt void adca1_isr(void) {
   // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
   float32 pr_input = err[frameIndex];
+  pid_n1_input = err[frameIndex];
   pr_out[frameIndex] = pr_run(pr_input);
+  pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
   // changeCMP_value(pr_out[frameIndex]);
-  changeCMP_value(1 * err[frameIndex]);  // pure P
+  // changeCMP_value(pid_n1_result[frameIndex]);
+  changeCMP_value(err[frameIndex]);  // pure P
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
   //   float32 pr_input = err[frameIndex];  // 直接通过 err
   //   pr_out[frameIndex] = pr_run(pr_input);
@@ -260,7 +264,7 @@ interrupt void adca1_isr(void) {
   // changeCMP_value(pid_n1_result[frameIndex]);
   // changeCMP_phase(3 * 3.14159 / 2 * 0.9);
   // changeCMP_phase(wt);
-  // changeCMP_value(-0.8);
+  // changeCMP_value(0.8);
   // GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;
   // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;
 
