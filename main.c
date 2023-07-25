@@ -19,6 +19,7 @@ interrupt void adca1_isr(void);
 // Defines
 //
 #define BUFFER_SIZE 512
+#define PI 3.14159265
 
 //
 // Globals
@@ -39,6 +40,9 @@ Uint16 ADCCResults0[BUFFER_SIZE];
 float32 ADCCResults0_converted[BUFFER_SIZE];
 
 float32 wt = 0;
+float32 wt1 = 0;
+float32 wt2 = 0;
+float32 wt3 = 0;
 
 Uint16 frameIndex;
 
@@ -93,6 +97,7 @@ void main(void) {
   InitGpio();
   InitEPwm1Gpio();
   InitEPwm2Gpio();
+  InitEPwm3Gpio();
   //
   // Enable an GPIO output on GPIO22, set it high/low
   //
@@ -111,6 +116,11 @@ void main(void) {
   GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 0;  // GPIO3 = GPIO3
   GpioCtrlRegs.GPADIR.bit.GPIO3 = 1;   // GPIO3 = output
   GpioDataRegs.GPASET.bit.GPIO3 = 1;   // Load output latch
+
+  GpioCtrlRegs.GPAPUD.bit.GPIO5 = 0;   // Enable pullup on GPIO5
+  GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 0;  // GPIO5 = GPIO5
+  GpioCtrlRegs.GPADIR.bit.GPIO5 = 1;   // GPIO5 = output
+  GpioDataRegs.GPASET.bit.GPIO5 = 1;   // Load output latch
   EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
@@ -164,12 +174,15 @@ void main(void) {
   pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
   // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
 
-  // disableEpwm1Gpio();
-  // disableEpwm2Gpio();
+  wt1 = 0;
+  wt2 = -2 * PI / 3;
+  wt3 = 2 * PI / 3;
+
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
   EPwm2Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
+  EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
     // wait while ePWM causes ADC conversions, which then cause interrupts,
     // which fill the results buffer, eventually setting the bufferFull flag
@@ -213,8 +226,17 @@ interrupt void adca1_isr(void) {
   ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159269 / 2 * SW_FREQ;
-  if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
+  wt = wt + PI / 100 / 2 * SW_FREQ;
+  if (wt > PI * 2) wt -= PI * 2;
+
+  wt1 = wt1 + PI / 100 / 2 * SW_FREQ;
+  if (wt1 > PI * 2) wt1 -= PI * 2;
+
+  wt2 = wt2 + PI / 100 / 2 * SW_FREQ;
+  if (wt2 > PI * 2) wt2 -= PI * 2;
+
+  wt3 = wt3 + PI / 100 / 2 * SW_FREQ;
+  if (wt3 > PI * 2) wt3 -= PI * 2;
 
   U2_result[frameIndex] = -(ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
   ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
@@ -237,14 +259,14 @@ interrupt void adca1_isr(void) {
   // b2 = b1 || b3;
   // b3 = b2;
 
-  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
   // // Udc的PID控制输出值作为电流的跟踪幅值
   // // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
   // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
-  float32 pr_input = err[frameIndex];
-  pr_out[frameIndex] = pr_run(pr_input);
-  changeCMP_value(pr_out[frameIndex]);
+  // float32 pr_input = err[frameIndex];
+  // pr_out[frameIndex] = pr_run(pr_input);
+  // changeCMP_value(pr_out[frameIndex]);
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
   //   float32 pr_input = err[frameIndex];  // 直接通过 err
   //   pr_out[frameIndex] = pr_run(pr_input);
@@ -266,6 +288,10 @@ interrupt void adca1_isr(void) {
   // changeCMP_value(-0.8);
   // GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;
   // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;
+
+  changeCMP_EPWM1_phase(wt1);
+  changeCMP_EPWM2_phase(wt2);
+  changeCMP_EPWM3_phase(wt3);
 
   frameIndex++;
   if (BUFFER_SIZE <= frameIndex) {
