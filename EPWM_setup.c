@@ -104,22 +104,85 @@ void ConfigureEPWM(void) {
   // freeze counter
   EPwm2Regs.TBCTL.bit.CTRMODE = 3;  // freeze counter
   EDIS;
+
+  /* Configure EPWM3 */
+  EALLOW;
+  //
+  // Setup TB
+  //
+  EPwm3Regs.TBPRD = PWM_MAX_COUNT;                // Set timer period
+  EPwm3Regs.TBPHS.bit.TBPHS = 0x0000;             // Phase is 0
+  EPwm3Regs.TBCTR = 0x0000;                       // Clear counter
+  EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // Count updown
+  EPwm3Regs.TBCTL.bit.PHSEN = TB_ENABLE;          // Disable phase loading
+  EPwm3Regs.TBCTL.bit.PRDLD = TB_SHADOW;
+  EPwm3Regs.TBCTL.bit.SYNCOSEL = TB_SYNC_IN;
+  //// ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
+  // EPWMCLK already equals to SYSCLK / 2
+  EPwm3Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;  // /1
+  EPwm3Regs.TBCTL.bit.CLKDIV = TB_DIV1;
+
+  //
+  // Setup CC
+  //
+  EPwm3Regs.CMPCTL.bit.SHDWAMODE = CC_SHADOW;
+  EPwm3Regs.CMPCTL.bit.SHDWBMODE = CC_SHADOW;
+  EPwm3Regs.CMPCTL.bit.LOADAMODE = CC_CTR_ZERO;
+  EPwm3Regs.CMPCTL.bit.LOADBMODE = CC_CTR_ZERO;
+  EPwm3Regs.CMPA.bit.CMPA = PWM_MID_COUNT;  // Set compare A value to max/2 counts
+  EPwm3Regs.CMPB.bit.CMPB = 0;
+
+  //
+  // Setup AQ
+  //
+  EPwm3Regs.AQCTLA.bit.CAU = AQ_SET;
+  EPwm3Regs.AQCTLA.bit.CAD = AQ_CLEAR;
+  EPwm3Regs.AQCTLB.bit.CBU = AQ_NO_ACTION;  // B No Action
+  EPwm3Regs.AQCTLB.bit.CBD = AQ_NO_ACTION;
+
+  //
+  // Setup DB
+  //
+  EPwm3Regs.DBCTL.bit.IN_MODE = DBA_ALL;          // 只接受AQ出来的EpwmxA
+  EPwm3Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC;       // active high complementary
+  EPwm3Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;  // enable s1, s0
+  EPwm3Regs.DBRED.bit.DBRED = 0;
+  EPwm3Regs.DBFED.bit.DBFED = 0;
+
+  // freeze counter
+  EPwm3Regs.TBCTL.bit.CTRMODE = 3;  // freeze counter
+  EDIS;
 }
 
 void changeCMP_phase(float32 wt) {
-  Uint16 duty1 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
-  Uint16 duty2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
-  EPwm1Regs.CMPA.bit.CMPA = duty1;
-  EPwm2Regs.CMPA.bit.CMPA = duty2;
+  Uint16 cmp1 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
+  Uint16 cmp2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  EPwm1Regs.CMPA.bit.CMPA = cmp1;
+  EPwm2Regs.CMPA.bit.CMPA = cmp2;
+}
+
+void changeCMP_EPWM1_phase(float32 wt) {
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  EPwm1Regs.CMPA.bit.CMPA = cmp;
+}
+
+void changeCMP_EPWM2_phase(float32 wt) {
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  EPwm2Regs.CMPA.bit.CMPA = cmp;
+}
+
+void changeCMP_EPWM3_phase(float32 wt) {
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  EPwm3Regs.CMPA.bit.CMPA = cmp;
 }
 
 /// @brief 改变PWM占空比
 /// @param val 相当于sin(wt)
 void changeCMP_value(float32 val) {
-  Uint16 duty1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
-  Uint16 duty2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
-  EPwm1Regs.CMPA.bit.CMPA = duty1;
-  EPwm2Regs.CMPA.bit.CMPA = duty2;
+  Uint16 cmp1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
+  Uint16 cmp2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
+  EPwm1Regs.CMPA.bit.CMPA = cmp1;
+  EPwm2Regs.CMPA.bit.CMPA = cmp2;
 }
 
 void disableEpwm1Gpio(void) {

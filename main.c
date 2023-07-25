@@ -20,6 +20,7 @@ interrupt void adca1_isr(void);
 //
 #define BUFFER_SIZE 1024
 #define LITTLE_BUFFER 16
+#define PI 3.14159265
 
 //
 // Globals
@@ -95,6 +96,7 @@ void main(void) {
   InitGpio();
   InitEPwm1Gpio();
   InitEPwm2Gpio();
+  InitEPwm3Gpio();
   //
   // Enable an GPIO output on GPIO22, set it high/low
   //
@@ -157,12 +159,11 @@ void main(void) {
   // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
   pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
 
-  // disableEpwm1Gpio();
-  // disableEpwm2Gpio();
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
   EPwm2Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
+  EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
     // wait while ePWM causes ADC conversions, which then cause interrupts,
     // which fill the results buffer, eventually setting the bufferFull flag
@@ -206,8 +207,8 @@ interrupt void adca1_isr(void) {
   // ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159265;
-  if (wt > 3.14159265 * 2) wt -= 3.14159265 * 2;
+  wt = wt + PI / 100 / 2 * SW_FREQ;
+  if (wt > PI * 2) wt -= PI * 2;
 
   U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
   ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
