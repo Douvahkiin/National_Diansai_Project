@@ -47,7 +47,7 @@ volatile Uint16 bufferFull;
 float32 Uref_u2 = 1.053;
 float32 K_u2 = 140;
 float32 Uref_i = 1.777;
-float32 K_i = 2.175;
+float32 K_i = 2.535;
 float32 Uref_udc = 1.053;
 float32 K_udc = 140;
 float32 std_ig;
@@ -75,7 +75,7 @@ float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
-float32 inverter_std_I = 2;
+float32 inverter_std_I = 3;
 float32 inverter_std_U2 = 10;
 float32 rectifier_std_I = 5;
 
@@ -161,8 +161,8 @@ void main(void) {
   pid_n1_Init(0.1, 0.1, 0);  // 直流端电压PI控制
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
   // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
-  // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
-  pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
+  pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
+  // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
 
   // disableEpwm1Gpio();
   // disableEpwm2Gpio();
@@ -196,16 +196,16 @@ interrupt void adca1_isr(void) {
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
   ADCAResults1[frameIndex] = AdcaResultRegs.ADCRESULT1;
   ADCAResults1_converted[frameIndex] = ADCAResults1[frameIndex] * 3.0 / 4096.0;
-  // ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
-  // ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
+  ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
+  ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
 
   ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
   ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
   ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
   ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
 
-  // ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
-  // ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
+  ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
+  ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
 
   ADCAResults0_converted[frameIndex] = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre1, alpha1);
   ADCAResults1_converted[frameIndex] = low_pass_filter(ADCAResults1_converted[frameIndex], &outputPre2, alpha2);
@@ -213,18 +213,12 @@ interrupt void adca1_isr(void) {
   ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159269 / 2;
+  wt = wt + 0.0314159269 / 2 * SW_FREQ;
   if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
 
-  U2_result[frameIndex] = -(ADCAResults0_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = (ADCBResults0_converted[frameIndex] - Uref_i) * K_i;
-  Udc_result[frameIndex] = (ADCAResults1_converted[frameIndex] - Uref_udc) * K_udc;
-
-  // /* 整流器控电压 */
-  // float32 std_U2 = inverter_std_U2 * sin(wt);
-  // pid_n1_input = std_U2 - U2_result[frameIndex];
-  // pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
-  // pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 1, -1);
+  U2_result[frameIndex] = -(ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
+  ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
+  Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // // pll input 为电网电压
   // pll_input = U2_result[frameIndex];
