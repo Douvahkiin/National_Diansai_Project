@@ -42,6 +42,7 @@ float32 ADCCResults0_converted[BUFFER_SIZE];
 float32 wt = 0;
 
 Uint16 frameIndex;
+Uint16 littleIndex;
 
 volatile Uint16 bufferFull;
 
@@ -138,6 +139,7 @@ void main(void) {
   ERTM;           // Enable Global realtime interrupt DBGM
 
   frameIndex = 0;
+  littleIndex = 0;
   bufferFull = 0;
 
   // enable PIE interrupt
@@ -208,14 +210,14 @@ interrupt void adca1_isr(void) {
   if (wt > 3.14159265 * 2) wt -= 3.14159265 * 2;
 
   U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = -(ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // /* 整流器控电压 */
   // float32 std_U2 = inverter_std_U2 * sin(wt);
   // pid_n1_input = std_U2 - U2_result[frameIndex];
-  // pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
-  // pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 1, -1);
+  // pid_n1_result[littleIndex] = pid_n1_Run(pid_n1_input);
+  // pid_n1_result[littleIndex] = saturation(pid_n1_result[littleIndex], 1, -1);
 
   // // pll input 为电网电压
   // pll_input = U2_result[frameIndex];
@@ -226,42 +228,42 @@ interrupt void adca1_isr(void) {
 
   // /* 对Udc进行PID控制 */
   // pid_n1_input = (std_Udc - Udc_result[frameIndex]);
-  // pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
-  // pid_n1_result[frameIndex] = saturation(pid_n1_result[frameIndex], 5, -5);
+  // pid_n1_result[littleIndex] = pid_n1_Run(pid_n1_input);
+  // pid_n1_result[littleIndex] = saturation(pid_n1_result[littleIndex], 5, -5);
 
   // /* PR控制器启动判断, 启动后变量 b2 自锁 */
   // b1 = fabsf(U2_result[frameIndex]) >= 5;
   // b2 = b1 || b3;
   // b3 = b2;
 
-  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  err[littleIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
   // // Udc的PID控制输出值作为电流的跟踪幅值
-  // // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
-  // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // // err[littleIndex] = pll_result[frameIndex] * pid_n1_result[littleIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // err[littleIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
-  float32 pr_input = err[frameIndex];
-  pid_n1_input = err[frameIndex];
-  pr_out[frameIndex] = pr_run(pr_input);
-  pid_n1_result[frameIndex] = pid_n1_Run(pid_n1_input);
-  // changeCMP_value(pr_out[frameIndex]);
-  // changeCMP_value(pid_n1_result[frameIndex]);
-  changeCMP_value(err[frameIndex]);  // pure P
+  float32 pr_input = err[littleIndex];
+  pid_n1_input = err[littleIndex];
+  pr_out[littleIndex] = pr_run(pr_input);
+  pid_n1_result[littleIndex] = pid_n1_Run(pid_n1_input);
+  changeCMP_value(pr_out[littleIndex]);
+  // changeCMP_value(pid_n1_result[littleIndex]);
+  // changeCMP_value(err[littleIndex]);  // pure P
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
-  //   float32 pr_input = err[frameIndex];  // 直接通过 err
-  //   pr_out[frameIndex] = pr_run(pr_input);
-  //   // pr_out[frameIndex] = pr_input;  // test pure P controller
+  //   float32 pr_input = err[littleIndex];  // 直接通过 err
+  //   pr_out[littleIndex] = pr_run(pr_input);
+  //   // pr_out[littleIndex] = pr_input;  // test pure P controller
   //   if (!b4) {
   //     enableEpwm1Gpio();
   //     enableEpwm2Gpio();
   //     b4 = 1;
   //   }
-  //   changeCMP_value(pr_out[frameIndex]);
+  //   changeCMP_value(pr_out[littleIndex]);
   // } else {
   //   disableEpwm1Gpio();
   //   disableEpwm2Gpio();
   // }
 
-  // changeCMP_value(pid_n1_result[frameIndex]);
+  // changeCMP_value(pid_n1_result[littleIndex]);
   // changeCMP_phase(3 * 3.14159 / 2 * 0.9);
   // changeCMP_phase(wt);
   // changeCMP_value(0.8);
@@ -269,6 +271,8 @@ interrupt void adca1_isr(void) {
   // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;
 
   frameIndex++;
+  littleIndex++;
+  littleIndex %= LITTLE_BUFFER;
   if (BUFFER_SIZE <= frameIndex) {
     frameIndex = 0;
     bufferFull = 1;
