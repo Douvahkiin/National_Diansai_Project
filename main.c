@@ -79,7 +79,7 @@ float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
-float32 inverter_std_I = 3;
+float32 inverter_std_I = 1;
 float32 inverter_std_U2 = 10;
 float32 rectifier_std_I = 5;
 
@@ -239,7 +239,7 @@ interrupt void adca1_isr(void) {
   if (wt3 > PI * 2) wt3 -= PI * 2;
 
   U2_result[frameIndex] = -(ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = -(ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // // pll input 为电网电压
@@ -259,14 +259,15 @@ interrupt void adca1_isr(void) {
   // b2 = b1 || b3;
   // b3 = b2;
 
-  // err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
-  // // Udc的PID控制输出值作为电流的跟踪幅值
-  // // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
+  // Udc的PID控制输出值作为电流的跟踪幅值
+  // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
   // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
-  // float32 pr_input = err[frameIndex];
-  // pr_out[frameIndex] = pr_run(pr_input);
-  // changeCMP_value(pr_out[frameIndex]);
+  float32 pr_input = err[frameIndex];
+  pr_out[frameIndex] = pr_run(pr_input);
+  changeCMP_value(pr_out[frameIndex]);
+  // changeCMP_value(err[frameIndex]);
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
   //   float32 pr_input = err[frameIndex];  // 直接通过 err
   //   pr_out[frameIndex] = pr_run(pr_input);
@@ -289,9 +290,9 @@ interrupt void adca1_isr(void) {
   // GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;
   // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;
 
-  changeCMP_EPWM1_phase(wt1);
-  changeCMP_EPWM2_phase(wt2);
-  changeCMP_EPWM3_phase(wt3);
+  // changeCMP_EPWM1_phase(wt1);
+  // changeCMP_EPWM2_phase(wt2);
+  // changeCMP_EPWM3_phase(wt3);
 
   frameIndex++;
   if (BUFFER_SIZE <= frameIndex) {
