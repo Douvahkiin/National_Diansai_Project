@@ -4,7 +4,11 @@
 #ifndef _EPWM_SET_
 #define _EPWM_SET_
 
-#define PWM_MAX_COUNT 5000
+// 1 for 20k, 2 for 10k
+#define SW_FREQ 1
+
+// 2500 for 20k, 5000 for 10k
+#define PWM_MAX_COUNT (SW_FREQ * 2500)
 #define PWM_MID_COUNT (PWM_MAX_COUNT / 2)
 
 void ConfigureEPWM(void);
