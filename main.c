@@ -47,7 +47,7 @@ volatile Uint16 bufferFull;
 
 float32 Uref_u2 = 1.251;
 float32 K_u2 = 11;
-float32 Uref_i = 1.466;
+float32 Uref_i = 1.506;
 float32 K_i = 4.175;
 float32 Uref_udc = 0;
 float32 K_udc = 11;
@@ -192,8 +192,8 @@ interrupt void adca1_isr(void) {
 
   ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
   ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
-  // ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
-  // ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
+  ADCBResults1[frameIndex] = AdcbResultRegs.ADCRESULT1;
+  ADCBResults1_converted[frameIndex] = ADCBResults1[frameIndex] * 3.0 / 4096.0;
 
   ADCCResults0[frameIndex] = AdccResultRegs.ADCRESULT0;
   ADCCResults0_converted[frameIndex] = ADCCResults0[frameIndex] * 3.0 / 4096.0;
@@ -204,11 +204,11 @@ interrupt void adca1_isr(void) {
   // ADCBResults1_converted[frameIndex] = low_pass_filter(ADCBResults1_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
-  wt = wt + 0.0314159269;
-  if (wt > 3.14159269 * 2) wt -= 3.14159269 * 2;
+  wt = wt + 0.0314159265;
+  if (wt > 3.14159265 * 2) wt -= 3.14159265 * 2;
 
   U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = -(ADCBResults0_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = -(ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // /* 整流器控电压 */
