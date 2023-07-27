@@ -1,3 +1,4 @@
+#include "EPWM_setup.h"
 #include "F28x_Project.h"
 #include "math.h"
 #include "pid.h"

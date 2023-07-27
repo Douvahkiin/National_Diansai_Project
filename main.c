@@ -2,6 +2,7 @@
 // Included Files
 //
 #include "ADC_setup.h"
+#include "DAC_setup.h"
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
 #include "filters.h"
@@ -19,6 +20,7 @@ interrupt void adca1_isr(void);
 // Defines
 //
 #define BUFFER_SIZE 512
+#define LARGE_BUFFER 2048
 #define PI 3.14159265
 
 //
@@ -45,14 +47,15 @@ float32 wt2 = 0;
 float32 wt3 = 0;
 
 Uint16 frameIndex;
+Uint16 largeIndex;
 
 volatile Uint16 bufferFull;
 
-float32 Uref_u2 = 1.053;
+float32 Uref_u2 = 1.038;
 float32 K_u2 = 140;
 float32 Uref_i = 1.777;
 float32 K_i = 2.535;
-float32 Uref_udc = 1.053;
+float32 Uref_udc = 1.038;
 float32 K_udc = 140;
 float32 std_ig;
 float32 Udc;
@@ -64,7 +67,7 @@ float32 pll_input;
 float32 U2_result[BUFFER_SIZE];
 float32 Udc_result[BUFFER_SIZE];
 float32 ig_result[BUFFER_SIZE];
-float32 pll_result[BUFFER_SIZE];
+float32 pll_result[LARGE_BUFFER];
 float32 pid_n1_result[BUFFER_SIZE];
 float32 err[BUFFER_SIZE];
 float32 pr_out[BUFFER_SIZE];
@@ -98,14 +101,15 @@ void main(void) {
   InitEPwm1Gpio();
   InitEPwm2Gpio();
   InitEPwm3Gpio();
+  ConfigureDAC();
   //
   // Enable an GPIO output on GPIO22, set it high/low
   //
   EALLOW;
-  GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;   // Enable pullup on GPIO22
-  GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;  // GPIO22 = GPIO22
-  GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;   // GPIO22 = output
-  GpioDataRegs.GPASET.bit.GPIO22 = 1;   // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;    // Enable pullup on GPIO22
+  GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;   // GPIO22 = GPIO22
+  GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;    // GPIO22 = output
+  GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;  // Load output latch
 
   GpioCtrlRegs.GPAPUD.bit.GPIO1 = 0;   // Enable pullup on GPIO1
   GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 0;  // GPIO1 = GPIO1
@@ -157,6 +161,7 @@ void main(void) {
   ERTM;           // Enable Global realtime interrupt DBGM
 
   frameIndex = 0;
+  largeIndex = 0;
   bufferFull = 0;
 
   // enable PIE interrupt
@@ -169,10 +174,15 @@ void main(void) {
   // pll, pid init
   pll_Init(314.1593, 2);     // 50Hz
   pid_n1_Init(0.1, 0.1, 0);  // 直流端电压PI控制
+
+  /* pr init, Ts = 0.0001*/
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
   // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
-  pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
+  // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
   // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
+
+  /* pr_init, Ts = 0.00005*/
+  pr_init(1, -1.9966, 0.99686, 1.0078, -1.9966, 0.98902);  // p=1, r=5
 
   wt1 = 0;
   wt2 = -2 * PI / 3;
@@ -211,6 +221,7 @@ interrupt void adca1_isr(void) {
   ADCAResults1_converted[frameIndex] = ADCAResults1[frameIndex] * 3.0 / 4096.0;
   ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT14;
   ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
+  // changeDACVal(ADCAResults2[frameIndex]);
 
   ADCBResults0[frameIndex] = AdcbResultRegs.ADCRESULT0;
   ADCBResults0_converted[frameIndex] = ADCBResults0[frameIndex] * 3.0 / 4096.0;
@@ -229,6 +240,10 @@ interrupt void adca1_isr(void) {
   wt = wt + PI / 100 / 2 * SW_FREQ;
   if (wt > PI * 2) wt -= PI * 2;
 
+  // /* 这是周期为60Hz的正弦波表示 */
+  // wt = wt + PI / 100 / 2 * 6 / 5 * SW_FREQ;
+  // if (wt > PI * 2) wt -= PI * 2;
+
   wt1 = wt1 + PI / 100 / 2 * SW_FREQ;
   if (wt1 > PI * 2) wt1 -= PI * 2;
 
@@ -238,16 +253,17 @@ interrupt void adca1_isr(void) {
   wt3 = wt3 + PI / 100 / 2 * SW_FREQ;
   if (wt3 > PI * 2) wt3 -= PI * 2;
 
-  U2_result[frameIndex] = -(ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
+  U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
   ig_result[frameIndex] = -(ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
-  // // pll input 为电网电压
-  // pll_input = U2_result[frameIndex];
-  // // pll 的结果
-  // pll_result[frameIndex] = pll_Run(pll_input);
-  // // 用正弦便于判断正确
-  // pll_result[frameIndex] = cos(pll_result[frameIndex]);
+  // pll input 为电网电压
+  pll_input = U2_result[frameIndex];
+  // pll 的结果
+  pll_result[largeIndex] = pll_Run(pll_input);
+  // 用正弦便于判断正确
+  pll_result[largeIndex] = cos(pll_result[largeIndex]);
+  changeDACVal(2048 + 1800.0 * pll_result[largeIndex]);
 
   // /* 对Udc进行PID控制 */
   // pid_n1_input = (std_Udc - Udc_result[frameIndex]);
@@ -261,8 +277,8 @@ interrupt void adca1_isr(void) {
 
   err[frameIndex] = sin(wt) * inverter_std_I - ig_result[frameIndex];  // 未并网, 跟踪软件产生的波
   // Udc的PID控制输出值作为电流的跟踪幅值
-  // err[frameIndex] = pll_result[frameIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
-  // err[frameIndex] = pll_result[frameIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // err[frameIndex] = pll_result[largeIndex] * pid_n1_result[frameIndex] - ig_result[frameIndex];  // 已并网, 跟踪电网的波
+  // err[frameIndex] = pll_result[largeIndex] * rectifier_std_I - ig_result[frameIndex];  // 已并网, 跟踪电网的波
 
   float32 pr_input = err[frameIndex];
   pr_out[frameIndex] = pr_run(pr_input);
@@ -295,6 +311,8 @@ interrupt void adca1_isr(void) {
   // changeCMP_EPWM3_phase(wt3);
 
   frameIndex++;
+  largeIndex++;
+  largeIndex %= LARGE_BUFFER;
   if (BUFFER_SIZE <= frameIndex) {
     frameIndex = 0;
     bufferFull = 1;

@@ -21,14 +21,14 @@ void pll_Init(float32 w0, float32 Vm) {
   pll.integral = 0;
   pll.Vm = Vm;
   pll.w0 = w0;  // 50*2*pi
-  pll.Ts = 0.0001;
+  pll.Ts = 0.00005 * SW_FREQ;
   pid_pll_Init(180, 3200, 0);
   SOGI_K = 1;  // SOGI算法的增益K
   SOGI_Integral1 = 0;
   SOGI_Integral2 = 0;
   SOGI_w0 = w0;  // 50*2*pi
   SOGI_IntLimit = 10;
-  SOGI_Ts = 0.0001;
+  SOGI_Ts = 0.00005 * SW_FREQ;
 }
 
 void SOGI(float32 input, float32 *alpha, float32 *beta) {
@@ -68,9 +68,9 @@ float32 pll_Run(float32 input) {
   float32 uk = pid_pll_Run(pid_input);
   float32 preOut = uk + pll.w0;
   pll.integral += preOut * pll.Ts;
-  if (pll.integral > 2 * 3.14159269) {
-    pll.integral -= 2 * 3.14159269;
-    GpioDataRegs.GPATOGGLE.bit.GPIO9 = 1;  // gpio9 toggle
+  if (pll.integral > 2 * 3.14159265) {
+    pll.integral -= 2 * 3.14159265;
+    GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;  // toggle GPIO22
   }
   pll.negSine = -sin((double)pll.integral);
   pll.posCosine = cos((double)pll.integral);
