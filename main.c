@@ -2,6 +2,7 @@
 // Included Files
 //
 #include "ADC_setup.h"
+#include "DAC_setup.h"
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
 #include "filters.h"
@@ -18,7 +19,7 @@ interrupt void adca1_isr(void);
 //
 // Defines
 //
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 512
 #define LITTLE_BUFFER 16
 #define PI 3.14159265
 
@@ -78,7 +79,7 @@ float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
-float32 inverter_std_I = 2;
+float32 inverter_std_I = 1;
 float32 inverter_std_U2 = 10;
 float32 rectifier_std_I = 5;
 
@@ -97,6 +98,7 @@ void main(void) {
   InitEPwm1Gpio();
   InitEPwm2Gpio();
   InitEPwm3Gpio();
+  ConfigureDAC();
   //
   // Enable an GPIO output on GPIO22, set it high/low
   //
@@ -156,8 +158,11 @@ void main(void) {
   pid_n1_Init(0.5, 0.1, 0);  // 直流端电压PI控制
   // pr_init(1, -1.9928, 0.99374, 1.3131, -1.9928, 0.68064);  // p=1, r=100
   // pr_init(1, -1.9928, 0.99374, 1.1565, -1.9928, 0.83719);  // p=1, r=50
-  pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
+  // pr_init(1, -1.9928, 0.99374, 1.0313, -1.9928, 0.96243);  // p=1, r=10
   // pr_init(1, -1.9928, 0.99374, 1.0157, -1.9928, 0.97808);  // p=1, r=5
+
+  /* for 20kHz */
+  pr_init(1, -1.9966, 0.99686, 1.0078, -1.9966, 0.98902);  // p=1, r=10
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -211,7 +216,7 @@ interrupt void adca1_isr(void) {
   if (wt > PI * 2) wt -= PI * 2;
 
   U2_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u2) * K_u2;
-  ig_result[frameIndex] = (ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = -(ADCBResults1_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults0_converted[frameIndex] - Uref_udc) * K_udc;
 
   // /* 整流器控电压 */
@@ -220,12 +225,13 @@ interrupt void adca1_isr(void) {
   // pid_n1_result[littleIndex] = pid_n1_Run(pid_n1_input);
   // pid_n1_result[littleIndex] = saturation(pid_n1_result[littleIndex], 1, -1);
 
-  // // pll input 为电网电压
-  // pll_input = U2_result[frameIndex];
-  // // pll 的结果
-  // pll_result[frameIndex] = pll_Run(pll_input);
-  // // 用正弦便于判断正确
-  // pll_result[frameIndex] = cos(pll_result[frameIndex]);
+  // pll input 为电网电压
+  pll_input = U2_result[frameIndex];
+  // pll 的结果
+  pll_result[frameIndex] = pll_Run(pll_input);
+  // 用正弦便于判断正确
+  pll_result[frameIndex] = cos(pll_result[frameIndex]);
+  changeDACVal(2048 + 2000.0 * pll_result[frameIndex]);
 
   // /* 对Udc进行PID控制 */
   // pid_n1_input = (std_Udc - Udc_result[frameIndex]);
@@ -246,7 +252,7 @@ interrupt void adca1_isr(void) {
   pid_n1_input = err[littleIndex];
   pr_out[littleIndex] = pr_run(pr_input);
   pid_n1_result[littleIndex] = pid_n1_Run(pid_n1_input);
-  changeCMP_value(pr_out[littleIndex]);
+  // changeCMP_value(pr_out[littleIndex]);
   // changeCMP_value(pid_n1_result[littleIndex]);
   // changeCMP_value(err[littleIndex]);  // pure P
   // if (b2) {                              // b2为真时, 打开PR以及PWM输出
@@ -266,7 +272,7 @@ interrupt void adca1_isr(void) {
 
   // changeCMP_value(pid_n1_result[littleIndex]);
   // changeCMP_phase(3 * 3.14159 / 2 * 0.9);
-  // changeCMP_phase(wt);
+  changeCMP_phase(wt);
   // changeCMP_value(0.8);
   // GpioDataRegs.GPACLEAR.bit.GPIO1 = 1;
   // GpioDataRegs.GPACLEAR.bit.GPIO3 = 1;

@@ -11,7 +11,7 @@ void pid_pll_Init(float32 p, float32 i, float32 d) {
   pid_pll.kp = p;
   pid_pll.ki = i;
   pid_pll.kd = d;
-  pid_pll.Ts = 0.0001;
+  pid_pll.Ts = 0.00005 * SW_FREQ;
 }
 
 float32 pid_pll_Run(float32 err) {
@@ -36,7 +36,7 @@ void pid_n1_Init(float32 p, float32 i, float32 d) {
   pid_n1.kp = p;
   pid_n1.ki = i;
   pid_n1.kd = d;
-  pid_n1.Ts = 0.0001;
+  pid_n1.Ts = 0.00005 * SW_FREQ;
 }
 
 float32 pid_n1_Run(float32 err) {
