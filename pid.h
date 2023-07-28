@@ -1,5 +1,7 @@
+#include "DAC_setup.h"
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
+#include "MACRO.h"
 
 #ifndef _PWM_
 #define _PWM_
@@ -18,8 +20,8 @@ void pid_pll_Init(float32 p, float32 i, float32 d);
 
 float32 pid_pll_Run(float32 err);
 
-void pid_n1_Init(float32 p, float32 i, float32 d);
+void pid_nx_Init(float32 p, float32 i, float32 d, struct _pid* pid_nx);
 
-float32 pid_n1_Run(float32 err);
+float32 pid_nx_Run(float32 err, struct _pid* pid_nx);
 
 #endif  // !_PWM_

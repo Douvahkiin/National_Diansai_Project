@@ -1,6 +1,7 @@
 #include "pll.h"
 
 struct _pll pll;
+struct _sogi sogi;
 extern struct _pid pid_pll;
 float32 SOGI_K;
 float32 SOGI_Integral1;
@@ -8,7 +9,22 @@ float32 SOGI_Integral2;
 float32 SOGI_w0;
 float32 SOGI_IntLimit;
 float32 SOGI_Ts;
-// extern myQueue q;
+
+void sogid_init(float32 d_d1, float32 d_d2, float32 d_d3, float32 d_n1, float32 d_n2) {
+  sogi.D_d1 = d_d1;
+  sogi.D_d2 = d_d2;
+  sogi.D_d3 = d_d3;
+  sogi.D_n1 = d_n1;
+  sogi.D_n2 = d_n2;
+}
+void sogiq_init(float32 q_d1, float32 q_d2, float32 q_d3, float32 q_n1, float32 q_n2, float32 q_n3) {
+  sogi.Q_d1 = q_d1;
+  sogi.Q_d2 = q_d2;
+  sogi.Q_d3 = q_d3;
+  sogi.Q_n1 = q_n1;
+  sogi.Q_n2 = q_n2;
+  sogi.Q_n3 = q_n3;
+}
 
 /// @brief 锁相环的初始化
 /// @param w0 角速度
@@ -23,11 +39,11 @@ void pll_Init(float32 w0, float32 Vm) {
   pll.w0 = w0;  // 50*2*pi
   pll.Ts = 0.00005 * SW_FREQ;
   pid_pll_Init(180, 3200, 0);
-  SOGI_K = 1;  // SOGI算法的增益K
+  SOGI_K = 0.5;  // SOGI算法的增益K
   SOGI_Integral1 = 0;
   SOGI_Integral2 = 0;
   SOGI_w0 = w0;  // 50*2*pi
-  SOGI_IntLimit = 10;
+  SOGI_IntLimit = 25;
   SOGI_Ts = 0.00005 * SW_FREQ;
 }
 
@@ -57,6 +73,9 @@ void SOGI(float32 input, float32 *alpha, float32 *beta) {
   *beta = SOGI_Integral2;  // 输出 V_beta
 }
 
+float32 SOGI_alpha(float32 input) {
+}
+
 float32 pll_Run(float32 input) {
   // 调用 SOGI, 滤波并产生正交的V_alpha与V_beta
   SOGI(input, &pll.inputVal_alpha, &pll.inputVal_beta);
@@ -64,12 +83,13 @@ float32 pll_Run(float32 input) {
   // Vm = sqrt(alpha^2+beta^2); 然后Vm=max(Vm, 0.5), 防止Vm算出来为0造成除法错误
   float32 Vm = sqrt(pll.inputVal_alpha * pll.inputVal_alpha + pll.inputVal_beta * pll.inputVal_beta);
   Vm = Vm > 0.5 ? Vm : 0.5;
+  changeDACAVal(2048 + 2000.0 * pll.inputVal_alpha / Vm);
   float32 pid_input = (pll.inputVal_alpha * pll.negSine + pll.inputVal_beta * pll.posCosine) / Vm;
   float32 uk = pid_pll_Run(pid_input);
   float32 preOut = uk + pll.w0;
   pll.integral += preOut * pll.Ts;
-  if (pll.integral > 2 * 3.14159265) {
-    pll.integral -= 2 * 3.14159265;
+  if (pll.integral >= 2 * PI) {
+    pll.integral -= 2 * PI;
     GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;  // toggle GPIO22
   }
   pll.negSine = -sin((double)pll.integral);
