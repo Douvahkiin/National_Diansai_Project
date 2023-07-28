@@ -174,8 +174,6 @@ void main(void) {
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
 
   // pll, pid init
-  sogid_init(1, -1.9919, 0.99218, 0.0039114, 0, -0.0039114);
-  sogiq_init(1, -1.9919, 0.99218, 3.072e-05, 6.144e-05, 3.072e-05);
   pll_Init(2 * PI * 50, 2);  // 50Hz
   pid_nx_Init(1, 0, 0, &pid_n1);
 
@@ -281,7 +279,7 @@ interrupt void adca1_isr(void) {
   // 用正弦便于判断正确
   pll_result = cos(pll_result);
   changeDACBVal(2048 + 2000.0 * sin(wt));
-  // changeDACAVal(2048 + 2000.0 * pll_result);
+  changeDACAVal(2048 + 2000.0 * pll_result);
 
   // /* PR控制器启动判断, 启动后变量 b2 自锁 */
   // b1 = fabsf(U2_result[frameIndex]) >= 5;
