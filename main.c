@@ -98,11 +98,12 @@ float32 outputPre3 = 0;
 float32 outputPre4 = 0;
 
 float32 inverter_std_I = 1;
-float32 inverter_std_U2 = 21.2132;
-// float32 inverter_std_U2 = 7.0711;
+// float32 inverter_std_U2 = 21.2132;
+float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 float32 rectifier_std_I = 2;
-float32 rectifier_std_Udc = 30;
+// float32 rectifier_std_Udc = 30;
+float32 rectifier_std_Udc = 10;
 
 /* 启动判断的相关变量 */
 bool b1;
@@ -140,15 +141,15 @@ void main(void) {
   GpioCtrlRegs.GPADIR.bit.GPIO3 = 1;   // GPIO3 = output
   GpioDataRegs.GPASET.bit.GPIO3 = 1;   // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO5 = 0;   // Enable pullup on GPIO5
-  GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 0;  // GPIO5 = GPIO5
-  GpioCtrlRegs.GPADIR.bit.GPIO5 = 1;   // GPIO5 = output
-  GpioDataRegs.GPASET.bit.GPIO5 = 1;   // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO5 = 0;    // Enable pullup on GPIO5
+  GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 0;   // GPIO5 = GPIO5
+  GpioCtrlRegs.GPADIR.bit.GPIO5 = 1;    // GPIO5 = output
+  GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;  // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO7 = 0;   // Enable pullup on GPIO7
-  GpioCtrlRegs.GPAMUX1.bit.GPIO7 = 0;  // GPIO7 = GPIO7
-  GpioCtrlRegs.GPADIR.bit.GPIO7 = 1;   // GPIO7 = output
-  GpioDataRegs.GPASET.bit.GPIO7 = 1;   // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO7 = 0;    // Enable pullup on GPIO7
+  GpioCtrlRegs.GPAMUX1.bit.GPIO7 = 0;   // GPIO7 = GPIO7
+  GpioCtrlRegs.GPADIR.bit.GPIO7 = 1;    // GPIO7 = output
+  GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;  // Load output latch
   EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
@@ -324,20 +325,20 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults14[frameIndex]);
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
-  // //
-  // // 交流电压环
-  // //
-  // err1 = sin(wt) * inverter_std_U2 - U22_result[frameIndex];
-  // float32 pr1_input = err1;
-  // pr1_out = pr_run(pr1_input, &pr1);
+  //
+  // (逆变侧)交流电压环
+  //
+  err1 = sin(wt) * inverter_std_U2 - U2_result[frameIndex];
+  float32 pr1_input = err1;
+  pr1_out = pr_run(pr1_input, &pr1);
 
-  // //
-  // // 交流电流环
-  // //
-  // // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-  // err2 = pr1_out - ig2_result[frameIndex];
-  // float32 pr2_input = err2;
-  // pr2_out = pr_run(pr2_input, &pr2);
+  //
+  // (逆变侧)交流电流环
+  //
+  // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
+  err2 = pr1_out - ig_result[frameIndex];
+  float32 pr2_input = err2;
+  pr2_out = pr_run(pr2_input, &pr2);
 
   // U22 pll
   float32 pll_input = U22_result[frameIndex];
@@ -355,7 +356,7 @@ interrupt void adca1_isr(void) {
   b3 = b2;
 
   //
-  // 直流电压环
+  // (整流侧)直流电压环
   //
   float32 err_Udc;
   if (b2) {
@@ -368,7 +369,7 @@ interrupt void adca1_isr(void) {
   pid_n1_out = saturation(pid_n1_out, 4.5, -4.5);
 
   //
-  // 交流电流环
+  // (整流侧)交流电流环
   //
   static float32 err_i22;
   if (b2) {
@@ -391,7 +392,7 @@ interrupt void adca1_isr(void) {
   // change PWM duty
   //
   // changeCMP_value(pr1_out);
-  // changeCMP_value(pr2_out);
+  changeCMP_value(pr2_out);
   // changeCMP_value(pid_n1_out);
   // changeCMP_value_brige2(1 * err_i22);
   // changeCMP_phase(wt);
