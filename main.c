@@ -101,7 +101,7 @@ float32 inverter_std_I = 1;
 float32 inverter_std_U2 = 21.2132;
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
-float32 rectifier_std_I = 1;
+float32 rectifier_std_I = 2;
 float32 rectifier_std_Udc = 5;
 
 /* 启动判断的相关变量 */
@@ -310,7 +310,7 @@ interrupt void adca1_isr(void) {
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
   U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
-  ig2_result[frameIndex] = -(ADCAResults15_converted[frameIndex] - Uref_i) * K_i;
+  ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i) * K_i;
   Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
   Udc2_result[frameIndex] = (ADCAResults0_converted[frameIndex] - Uref_udc2) * K_udc2;
 
@@ -324,20 +324,20 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults14[frameIndex]);
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
-  //
-  // 交流电压环
-  //
-  err1 = sin(wt) * inverter_std_U2 - U22_result[frameIndex];
-  float32 pr1_input = err1;
-  pr1_out = pr_run(pr1_input, &pr1);
+  // //
+  // // 交流电压环
+  // //
+  // err1 = sin(wt) * inverter_std_U2 - U22_result[frameIndex];
+  // float32 pr1_input = err1;
+  // pr1_out = pr_run(pr1_input, &pr1);
 
-  //
-  // 交流电流环
-  //
-  // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-  err2 = pr1_out - ig2_result[frameIndex];
-  float32 pr2_input = err2;
-  pr2_out = pr_run(pr2_input, &pr2);
+  // //
+  // // 交流电流环
+  // //
+  // // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
+  // err2 = pr1_out - ig2_result[frameIndex];
+  // float32 pr2_input = err2;
+  // pr2_out = pr_run(pr2_input, &pr2);
 
   // U22 pll
   float32 pll_input = U22_result[frameIndex];
@@ -350,41 +350,41 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults2[frameIndex]);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U22_result[frameIndex]) >= 5;
+  b1 = fabsf(U22_result[frameIndex]) >= 3;
   b2 = b1 || b3;
   b3 = b2;
 
-  // //
-  // // 直流电压环
-  // //
-  // float32 err_Udc;
-  // if (b2) {
-  //   err_Udc = rectifier_std_Udc - Udc2_result[frameIndex];
-  // } else {
-  //   err_Udc = 0;
-  // }
-  // float32 pid_n1_input = -err_Udc;
-  // pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
+  //
+  // 直流电压环
+  //
+  float32 err_Udc;
+  if (b2) {
+    err_Udc = rectifier_std_Udc - Udc2_result[frameIndex];
+  } else {
+    err_Udc = 0;
+  }
+  float32 pid_n1_input = -err_Udc;
+  pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
 
-  // //
-  // // 交流电流环
-  // //
-  // static float32 err_i22;
-  // if (b2) {
-  //   err_i22 = -pll_result * rectifier_std_I - ig2_result[frameIndex];
-  // } else {
-  //   err_i22 = 0;
-  // }
-  // float32 pr3_input = -err_i22;
-  // float32 pr3_out = pr_run(pr3_input, &pr3);
+  //
+  // 交流电流环
+  //
+  static float32 err_i22;
+  if (b2) {
+    err_i22 = pll_result * rectifier_std_I - ig2_result[frameIndex];
+  } else {
+    err_i22 = 0;
+  }
+  float32 pr3_input = -err_i22;
+  float32 pr3_out = pr_run(pr3_input, &pr3);
 
-  // if (b2) {
-  //   GpioDataRegs.GPASET.bit.GPIO5 = 1;
-  //   GpioDataRegs.GPASET.bit.GPIO7 = 1;
-  // } else {
-  //   GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;
-  //   GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;
-  // }
+  if (b2) {
+    GpioDataRegs.GPASET.bit.GPIO5 = 1;
+    GpioDataRegs.GPASET.bit.GPIO7 = 1;
+  } else {
+    GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;
+    GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;
+  }
 
   //
   // change PWM duty
@@ -395,7 +395,7 @@ interrupt void adca1_isr(void) {
   // changeCMP_value_brige2(1 * err_i22);
   // changeCMP_phase(wt);
   // changeCMP_value_brige2(sin(wt));
-  changeCMP_value_brige2(pr2_out);
+  changeCMP_value_brige2(pr3_out);
   // changeCMP_value_brige2(-err_i22);
   // changeCMP_value(0.8);
 
