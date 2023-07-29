@@ -69,7 +69,7 @@ float32 K_i = 3.5;
 float32 Uref_udc = 1.044;
 float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
-float32 K_udc2 = 140;
+float32 K_udc2 = 70;
 float32 std_ig;
 float32 Udc;
 float32 std_Udc = 10;
@@ -102,7 +102,7 @@ float32 inverter_std_U2 = 21.2132;
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 float32 rectifier_std_I = 2;
-float32 rectifier_std_Udc = 10;
+float32 rectifier_std_Udc = 30;
 
 /* 启动判断的相关变量 */
 bool b1;
@@ -197,7 +197,7 @@ void main(void) {
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(1, 0, 0, &pid_n1);
+  pid_nx_Init(0.1, 1, 0, 3, -3, &pid_n1);
 
   //
   // pr1 init
@@ -363,8 +363,9 @@ interrupt void adca1_isr(void) {
   } else {
     err_Udc = 0;
   }
-  float32 pid_n1_input = -err_Udc;
+  float32 pid_n1_input = err_Udc;
   pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
+  pid_n1_out = saturation(pid_n1_out, 4.5, -4.5);
 
   //
   // 交流电流环

@@ -30,24 +30,22 @@ float32 pid_pll_Run(float32 err) {
   return pid_pll.uk;  // uk ---> pwm gerenator
 }
 
-void pid_nx_Init(float32 p, float32 i, float32 d, struct _pid* pid_nx) {
+void pid_nx_Init(float32 p, float32 i, float32 d, float32 upper_limit, float32 lower_limit, struct _pid* pid_nx) {
   pid_nx->err_last = 0;
   pid_nx->uk = 0;
   pid_nx->integral = 0;
   pid_nx->kp = p;
   pid_nx->ki = i;
   pid_nx->kd = d;
+  pid_nx->lower_limit = lower_limit;
+  pid_nx->upper_limit = upper_limit;
   pid_nx->Ts = 0.00005 * SW_FREQ;
 }
 
 float32 pid_nx_Run(float32 err, struct _pid* pid_nx) {
   pid_nx->integral += err * pid_nx->Ts;
   pid_nx->derivative = (err - pid_nx->err_last) / pid_nx->Ts;
-  if (pid_nx->integral > 10) {
-    pid_nx->integral = 10;
-  } else if (pid_nx->integral < -10) {
-    pid_nx->integral = -10;
-  }
+  pid_nx->integral = saturation(pid_nx->integral, pid_nx->upper_limit, pid_nx->lower_limit);
 
   // pid_nx->uk is u(k)
   pid_nx->uk = pid_nx->kp * err + pid_nx->ki * pid_nx->integral + pid_nx->kd * pid_nx->derivative;
