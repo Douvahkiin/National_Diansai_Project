@@ -102,7 +102,7 @@ float32 inverter_std_U2 = 21.2132;
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 float32 rectifier_std_I = 2;
-float32 rectifier_std_Udc = 5;
+float32 rectifier_std_Udc = 10;
 
 /* 启动判断的相关变量 */
 bool b1;
@@ -371,7 +371,7 @@ interrupt void adca1_isr(void) {
   //
   static float32 err_i22;
   if (b2) {
-    err_i22 = pll_result * rectifier_std_I - ig2_result[frameIndex];
+    err_i22 = pll_result * pid_n1_out - ig2_result[frameIndex];
   } else {
     err_i22 = 0;
   }
