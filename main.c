@@ -16,6 +16,8 @@
 // Function Prototypes
 //
 interrupt void adca1_isr(void);
+interrupt void xint1_isr(void);
+interrupt void xint2_isr(void);
 
 //
 // externs
@@ -50,6 +52,17 @@ float32 ADCBResults3_converted[BUFFER_SIZE];
 Uint16 ADCCResults3[BUFFER_SIZE];
 float32 ADCCResults3_converted[BUFFER_SIZE];
 
+float32 ADCAResult0_mean = 0;
+float32 ADCAResult2_mean = 0;
+float32 ADCAResult3_mean = 0;
+float32 ADCAResult14_mean = 0;
+float32 ADCAResult15_mean = 0;
+
+float32 ADCBResult2_mean = 0;
+float32 ADCBResult3_mean = 0;
+
+float32 ADCCResult3_mean = 0;
+
 float32 wt = 0;
 float32 wt1 = 0;
 float32 wt2 = 0;
@@ -66,6 +79,8 @@ float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
 float32 Uref_i = 1.777;
 float32 K_i = 3.5;
+float32 Uref_i2 = 1.777;
+float32 K_i2 = 3.5;
 float32 Uref_udc = 1.044;
 float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
@@ -91,11 +106,24 @@ float32 alpha1 = 1;
 float32 alpha2 = 1;
 float32 alpha3 = 1;
 float32 alpha4 = 1;
+float32 alpha_for_avg = 0.3;
 
 float32 outputPre1 = 0;
 float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
+float32 outputPre5 = 0;
+float32 outputPre6 = 0;
+float32 outputPre7 = 0;
+float32 outputPre8 = 0;
+float32 outputPre_A0 = 0;
+float32 outputPre_A2 = 0;
+float32 outputPre_A3 = 0;
+float32 outputPre_A14 = 0;
+float32 outputPre_A15 = 0;
+float32 outputPre_B2 = 0;
+float32 outputPre_B3 = 0;
+float32 outputPre_C3 = 0;
 
 float32 inverter_std_I = 1;
 // float32 inverter_std_U2 = 21.2132;
@@ -169,6 +197,8 @@ void main(void) {
   // Map ISR functions
   EALLOW;
   PieVectTable.ADCA1_INT = &adca1_isr;  // function for ADCA interrupt 1
+  PieVectTable.XINT1_INT = &xint1_isr;
+  PieVectTable.XINT2_INT = &xint2_isr;
   EDIS;
 
   // Configure the ADC and power it up
@@ -191,10 +221,32 @@ void main(void) {
 
   // enable PIE interrupt
   PieCtrlRegs.PIEIER1.bit.INTx1 = 1;
+  PieCtrlRegs.PIEIER1.bit.INTx4 = 1;  // Enable PIE Group 1 INT4
+  PieCtrlRegs.PIEIER1.bit.INTx5 = 1;  // Enable PIE Group 1 INT5
 
   // sync ePWM
   EALLOW;
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
+
+  // configure XINT1 and XINT2
+  GPIO_SetupXINT1Gpio(61);
+  GPIO_SetupXINT2Gpio(123);
+  XintRegs.XINT1CR.bit.POLARITY = 1;  // Rising edge interrupt
+  XintRegs.XINT2CR.bit.POLARITY = 1;  // Rising edge interrupt
+  XintRegs.XINT1CR.bit.ENABLE = 1;    // Enable XINT1
+  XintRegs.XINT2CR.bit.ENABLE = 1;    // Enable XINT2
+
+  EALLOW;
+  GpioCtrlRegs.GPBMUX2.bit.GPIO61 = 0;   // GPIO
+  GpioCtrlRegs.GPBDIR.bit.GPIO61 = 0;    // input
+  GpioCtrlRegs.GPBQSEL2.bit.GPIO61 = 0;  // XINT1 Synch to SYSCLKOUT only
+
+  GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;      // GPIO
+  GpioCtrlRegs.GPDDIR.bit.GPIO123 = 0;       // input
+  GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
+  GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window
+                                             // is 510*SYSCLKOUT
+  EDIS;
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
@@ -298,11 +350,21 @@ interrupt void adca1_isr(void) {
   ADCCResults3[frameIndex] = AdccResultRegs.ADCRESULT0;
   ADCCResults3_converted[frameIndex] = ADCCResults3[frameIndex] * 3.0 / 4096.0;
 
-  ADCAResults2_converted[frameIndex] = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre1, alpha1);
-  ADCAResults3_converted[frameIndex] = low_pass_filter(ADCAResults3_converted[frameIndex], &outputPre2, alpha2);
-  // ADCAResults14[frameIndex] = low_pass_filter(ADCAResults14[frameIndex], &outputPre2, alpha2);
-  ADCBResults2_converted[frameIndex] = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre3, alpha3);
-  ADCBResults3_converted[frameIndex] = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre4, alpha4);
+  ADCAResult0_mean = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre_A0, alpha_for_avg);
+  ADCAResult2_mean = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre_A2, alpha_for_avg);
+  ADCAResult3_mean = low_pass_filter(ADCAResults3_converted[frameIndex], &outputPre_A3, alpha_for_avg);
+  ADCAResult14_mean = low_pass_filter(ADCAResults14_converted[frameIndex], &outputPre_A14, alpha_for_avg);
+  ADCAResult15_mean = low_pass_filter(ADCAResults15_converted[frameIndex], &outputPre_A15, alpha_for_avg);
+
+  ADCBResult2_mean = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre_B2, alpha_for_avg);
+  ADCBResult3_mean = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre_B3, alpha_for_avg);
+
+  ADCCResult3_mean = low_pass_filter(ADCCResults3_converted[frameIndex], &outputPre_C3, alpha_for_avg);
+
+  // ADCAResults2_converted[frameIndex] = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre1, alpha1);
+  // ADCAResults3_converted[frameIndex] = low_pass_filter(ADCAResults3_converted[frameIndex], &outputPre2, alpha2);
+  // ADCBResults2_converted[frameIndex] = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre3, alpha3);
+  // ADCBResults3_converted[frameIndex] = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre4, alpha4);
 
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + PI / 100 / 2 * SW_FREQ;
@@ -311,7 +373,7 @@ interrupt void adca1_isr(void) {
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
   U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
-  ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i) * K_i;
+  ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i2) * K_i2;
   Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
   Udc2_result[frameIndex] = (ADCAResults0_converted[frameIndex] - Uref_udc2) * K_udc2;
 
@@ -423,6 +485,17 @@ interrupt void adca1_isr(void) {
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
+interrupt void xint1_isr(void) {
+  Uref_u2 = ADCAResult14_mean;
+  Uref_u22 = ADCAResult2_mean;
+  Uref_i = ADCBResult3_mean;
+  Uref_i2 = ADCAResult15_mean;
+  Uref_udc = ADCCResult3_mean;
+  Uref_udc2 = ADCAResult0_mean;
+}
+
+interrupt void xint2_isr(void) {
+}
 //
 // End of file
 //
