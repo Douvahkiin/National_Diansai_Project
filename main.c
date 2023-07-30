@@ -106,7 +106,7 @@ float32 alpha1 = 1;
 float32 alpha2 = 1;
 float32 alpha3 = 1;
 float32 alpha4 = 1;
-float32 alpha_for_avg = 0.3;
+float32 alpha_for_avg = 0.1;
 
 float32 outputPre1 = 0;
 float32 outputPre2 = 0;
@@ -241,11 +241,12 @@ void main(void) {
   GpioCtrlRegs.GPBDIR.bit.GPIO61 = 0;    // input
   GpioCtrlRegs.GPBQSEL2.bit.GPIO61 = 0;  // XINT1 Synch to SYSCLKOUT only
 
-  GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;      // GPIO
-  GpioCtrlRegs.GPDDIR.bit.GPIO123 = 0;       // input
-  GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
-  GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window
-                                             // is 510*SYSCLKOUT
+  GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;   // GPIO
+  GpioCtrlRegs.GPDDIR.bit.GPIO123 = 0;    // input
+  GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 0;  // XINT2 Synch to SYSCLKOUT only
+
+  // GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
+  // GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window is 510*SYSCLKOUT
   EDIS;
 
   // pll, pid init
@@ -492,9 +493,13 @@ interrupt void xint1_isr(void) {
   Uref_i2 = ADCAResult15_mean;
   Uref_udc = ADCCResult3_mean;
   Uref_udc2 = ADCAResult0_mean;
+
+  // 差点忘了这个! 没有这个的话, 这个以及其它同组的中断都不会再被触发了
+  PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
 interrupt void xint2_isr(void) {
+  PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 //
 // End of file
