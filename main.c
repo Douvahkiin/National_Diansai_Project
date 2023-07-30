@@ -7,6 +7,7 @@
 #include "F28x_Project.h"
 #include "MACRO.h"
 #include "filters.h"
+#include "keys.h"
 #include "math.h"
 #include "pid.h"
 #include "pll.h"
@@ -112,10 +113,6 @@ float32 outputPre1 = 0;
 float32 outputPre2 = 0;
 float32 outputPre3 = 0;
 float32 outputPre4 = 0;
-float32 outputPre5 = 0;
-float32 outputPre6 = 0;
-float32 outputPre7 = 0;
-float32 outputPre8 = 0;
 float32 outputPre_A0 = 0;
 float32 outputPre_A2 = 0;
 float32 outputPre_A3 = 0;
@@ -227,27 +224,10 @@ void main(void) {
   // sync ePWM
   EALLOW;
   CpuSysRegs.PCLKCR0.bit.TBCLKSYNC = 1;
-
-  // configure XINT1 and XINT2
-  GPIO_SetupXINT1Gpio(61);
-  GPIO_SetupXINT2Gpio(123);
-  XintRegs.XINT1CR.bit.POLARITY = 1;  // Rising edge interrupt
-  XintRegs.XINT2CR.bit.POLARITY = 1;  // Rising edge interrupt
-  XintRegs.XINT1CR.bit.ENABLE = 1;    // Enable XINT1
-  XintRegs.XINT2CR.bit.ENABLE = 1;    // Enable XINT2
-
-  EALLOW;
-  GpioCtrlRegs.GPBMUX2.bit.GPIO61 = 0;   // GPIO
-  GpioCtrlRegs.GPBDIR.bit.GPIO61 = 0;    // input
-  GpioCtrlRegs.GPBQSEL2.bit.GPIO61 = 0;  // XINT1 Synch to SYSCLKOUT only
-
-  GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;   // GPIO
-  GpioCtrlRegs.GPDDIR.bit.GPIO123 = 0;    // input
-  GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 0;  // XINT2 Synch to SYSCLKOUT only
-
-  // GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
-  // GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window is 510*SYSCLKOUT
   EDIS;
+
+  // configure keys
+  configure_keys();
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
