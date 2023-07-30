@@ -2,6 +2,7 @@
 
 struct _pid pid_pll;
 struct _pid pid_n1;
+struct _pid pid_n2;
 
 void pid_pll_Init(float32 p, float32 i, float32 d) {
   pid_pll.err_last = 0;
@@ -29,27 +30,25 @@ float32 pid_pll_Run(float32 err) {
   return pid_pll.uk;  // uk ---> pwm gerenator
 }
 
-void pid_n1_Init(float32 p, float32 i, float32 d) {
-  pid_n1.err_last = 0;
-  pid_n1.uk = 0;
-  pid_n1.integral = 0;
-  pid_n1.kp = p;
-  pid_n1.ki = i;
-  pid_n1.kd = d;
-  pid_n1.Ts = 0.00005 * SW_FREQ;
+void pid_nx_Init(float32 p, float32 i, float32 d, float32 upper_limit, float32 lower_limit, struct _pid* pid_nx) {
+  pid_nx->err_last = 0;
+  pid_nx->uk = 0;
+  pid_nx->integral = 0;
+  pid_nx->kp = p;
+  pid_nx->ki = i;
+  pid_nx->kd = d;
+  pid_nx->lower_limit = lower_limit;
+  pid_nx->upper_limit = upper_limit;
+  pid_nx->Ts = 0.00005 * SW_FREQ;
 }
 
-float32 pid_n1_Run(float32 err) {
-  pid_n1.integral += err * pid_n1.Ts;
-  pid_n1.derivative = (err - pid_n1.err_last) / pid_n1.Ts;
-  if (pid_n1.integral > 10) {
-    pid_n1.integral = 10;
-  } else if (pid_n1.integral < -10) {
-    pid_n1.integral = -10;
-  }
+float32 pid_nx_Run(float32 err, struct _pid* pid_nx) {
+  pid_nx->integral += err * pid_nx->Ts;
+  pid_nx->derivative = (err - pid_nx->err_last) / pid_nx->Ts;
+  pid_nx->integral = saturation(pid_nx->integral, pid_nx->upper_limit, pid_nx->lower_limit);
 
-  // pid_n1.uk is u(k)
-  pid_n1.uk = pid_n1.kp * err + pid_n1.ki * pid_n1.integral + pid_n1.kd * pid_n1.derivative;
-  pid_n1.err_last = err;
-  return pid_n1.uk;  // uk ---> pwm gerenator
+  // pid_nx->uk is u(k)
+  pid_nx->uk = pid_nx->kp * err + pid_nx->ki * pid_nx->integral + pid_nx->kd * pid_nx->derivative;
+  pid_nx->err_last = err;
+  return pid_nx->uk;  // uk ---> pwm gerenator
 }

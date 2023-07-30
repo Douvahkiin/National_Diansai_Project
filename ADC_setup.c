@@ -125,6 +125,18 @@ void SetupADCEpwm(void) {
   AdcaRegs.ADCSOC14CTL.bit.ACQPS = acqps;           // sample window is 100 SYSCLK cycles
   AdcaRegs.ADCSOC14CTL.bit.TRIGSEL = 5;             // trigger on ePWM1 SOCA/C
 
+  AdcaRegs.ADCSOC15CTL.bit.CHSEL = ADC_CHANNEL_15;  // SOC0 will convert pin A2
+  AdcaRegs.ADCSOC15CTL.bit.ACQPS = acqps;           // sample window is 100 SYSCLK cycles
+  AdcaRegs.ADCSOC15CTL.bit.TRIGSEL = 5;             // trigger on ePWM1 SOCA/C
+
+  AdcaRegs.ADCSOC2CTL.bit.CHSEL = ADC_CHANNEL_0;
+  AdcaRegs.ADCSOC2CTL.bit.ACQPS = acqps;
+  AdcaRegs.ADCSOC2CTL.bit.TRIGSEL = 5;
+
+  AdcaRegs.ADCSOC3CTL.bit.CHSEL = ADC_CHANNEL_2;
+  AdcaRegs.ADCSOC3CTL.bit.ACQPS = acqps;
+  AdcaRegs.ADCSOC3CTL.bit.TRIGSEL = 5;
+
   AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 1;  // end of SOC1 will set ADCA's INT1 flag
   AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1;    // enable INT1 flag
   AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;  // make sure INT1 flag is cleared

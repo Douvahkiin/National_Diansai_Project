@@ -3,6 +3,7 @@
 #define _DAC
 
 void ConfigureDAC(void);
-void changeDACVal(Uint16 val);
+void changeDACAVal(Uint16 val);
+void changeDACBVal(Uint16 val);
 
 #endif  // end of _DAC_

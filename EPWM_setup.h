@@ -14,6 +14,7 @@
 void ConfigureEPWM(void);
 void changeCMP_phase(float32 wt);
 void changeCMP_value(float32 val);
+void changeCMP_value_brige2(float32 val);
 void disableEpwm1Gpio(void);
 void disableEpwm2Gpio(void);
 void enableEpwm1Gpio(void);
