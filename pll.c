@@ -38,24 +38,16 @@ void SOGI(float32 input, float32 *alpha, float32 *beta) {
   float32 pre_input = input - *alpha;
   float32 next_input = pre_input * SOGI_K - *beta;
 
+  // 特别注意: 积分必须乘以采样时间
   SOGI_Integral1 += next_input * SOGI_w0 * SOGI_Ts;
   // 限制 integral1 积分值
-  if (SOGI_Integral1 > SOGI_IntLimit) {
-    SOGI_Integral1 = SOGI_IntLimit;
-  } else if (SOGI_Integral1 < -SOGI_IntLimit) {
-    SOGI_Integral1 = -SOGI_IntLimit;
-  }
+  SOGI_Integral1 = saturation(SOGI_Integral1, SOGI_IntLimit, -SOGI_IntLimit);
 
   *alpha = SOGI_Integral1;  // 输出 V_alpha
 
-  // 特别注意: 积分必须乘以采样时间
   SOGI_Integral2 += *alpha * SOGI_w0 * SOGI_Ts;
   // 限制 integral2 积分值
-  if (SOGI_Integral2 > SOGI_IntLimit) {
-    SOGI_Integral2 = SOGI_IntLimit;
-  } else if (SOGI_Integral2 < -SOGI_IntLimit) {
-    SOGI_Integral2 = -SOGI_IntLimit;
-  }
+  SOGI_Integral2 = saturation(SOGI_Integral2, SOGI_IntLimit, -SOGI_IntLimit);
 
   *beta = SOGI_Integral2;  // 输出 V_beta
 }
@@ -69,12 +61,10 @@ float32 pll_Run(float32 input) {
   float32 beta = beta_2;
   beta_2 = beta_1;
   beta_1 = pll.inputVal_beta;
-  // pll.inputVal_alpha = SOGI_alpha(input);
-  // pll.inputVal_beta = SOGI_beta(input);
   /* 幅值自适应PLL */
   // Vm = sqrt(alpha^2+beta^2); 然后Vm=max(Vm, 0.5), 防止Vm算出来为0造成除法错误
   float32 Vm = sqrt(alpha * alpha + beta * beta);
-  Vm = Vm > 0.5 ? Vm : 0.5;
+  Vm = fmaxf(Vm, 0.5);
   // changeDACAVal(2048 + 2000.0 * alpha / Vm);
   // changeDACAVal(2048 + 2000.0 * temp / Vm);
   float32 pid_input = (alpha * pll.negSine + beta * pll.posCosine) / Vm;
@@ -85,7 +75,7 @@ float32 pll_Run(float32 input) {
     pll.integral -= 2 * PI;
     GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;  // toggle GPIO22
   }
-  pll.negSine = -sin((double)pll.integral);
-  pll.posCosine = cos((double)pll.integral);
+  pll.negSine = -sin(pll.integral);
+  pll.posCosine = cos(pll.integral);
   return pll.integral;
 }

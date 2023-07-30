@@ -5,4 +5,4 @@
 void ConfigureADC(void);
 void SetupADCEpwm(void);
 
-#endif  // !_ADC_SET_
+#endif  // _ADC_SET_
