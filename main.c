@@ -131,8 +131,8 @@ float32 rectifier_std_I = 2;
 float32 rectifier_std_Udc = 10;
 
 /* 启动判断的相关变量 */
-bool b1;
-bool b2;
+bool b1 = 0;
+bool b2 = 0;
 bool b3 = 0;
 bool b4 = 0;
 
@@ -231,7 +231,7 @@ void main(void) {
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(0.1, 1, 0, 3, -3, &pid_n1);
+  pid_nx_Init(0.1, 1, 0, 4.5, -4.5, &pid_n1);
 
   //
   // pr1 init
@@ -394,9 +394,9 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults2[frameIndex]);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U22_result[frameIndex]) >= 3;
-  b2 = b1 || b3;
-  b3 = b2;
+  // b1 = fabsf(U22_result[frameIndex]) >= 3;
+  // b2 = b1 || b3;
+  // b3 = b2;
 
   //
   // (整流侧)直流电压环
@@ -422,14 +422,6 @@ interrupt void adca1_isr(void) {
   }
   float32 pr3_input = -err_i22;
   float32 pr3_out = pr_run(pr3_input, &pr3);
-
-  if (b2) {
-    GpioDataRegs.GPASET.bit.GPIO5 = 1;
-    GpioDataRegs.GPASET.bit.GPIO7 = 1;
-  } else {
-    GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;
-    GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;
-  }
 
   //
   // change PWM duty
@@ -479,6 +471,9 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
+  b2 = !b2;
+  GpioDataRegs.GPATOGGLE.bit.GPIO5 = 1;
+  GpioDataRegs.GPATOGGLE.bit.GPIO7 = 1;
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 //
