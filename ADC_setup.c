@@ -120,6 +120,9 @@ void SetupADCEpwm(void) {
   AdcbRegs.ADCSOC1CTL.bit.CHSEL = ADC_CHANNEL_3;
   AdcbRegs.ADCSOC1CTL.bit.ACQPS = acqps;
   AdcbRegs.ADCSOC1CTL.bit.TRIGSEL = 5;
+  AdccRegs.ADCSOC1CTL.bit.CHSEL = ADC_CHANNEL_2;
+  AdccRegs.ADCSOC1CTL.bit.ACQPS = acqps;
+  AdccRegs.ADCSOC1CTL.bit.TRIGSEL = 5;
 
   AdcaRegs.ADCSOC14CTL.bit.CHSEL = ADC_CHANNEL_14;  // SOC0 will convert pin A2
   AdcaRegs.ADCSOC14CTL.bit.ACQPS = acqps;           // sample window is 100 SYSCLK cycles

@@ -50,6 +50,8 @@ float32 ADCBResults2_converted[BUFFER_SIZE];
 Uint16 ADCBResults3[BUFFER_SIZE];
 float32 ADCBResults3_converted[BUFFER_SIZE];
 
+Uint16 ADCCResults2[BUFFER_SIZE];
+float32 ADCCResults2_converted[BUFFER_SIZE];
 Uint16 ADCCResults3[BUFFER_SIZE];
 float32 ADCCResults3_converted[BUFFER_SIZE];
 
@@ -62,6 +64,7 @@ float32 ADCAResult15_mean = 0;
 float32 ADCBResult2_mean = 0;
 float32 ADCBResult3_mean = 0;
 
+float32 ADCCResult2_mean = 0;
 float32 ADCCResult3_mean = 0;
 
 float32 wt = 0;
@@ -74,16 +77,16 @@ Uint16 largeIndex;
 
 volatile Uint16 bufferFull;
 
-float32 Uref_u2 = 1.047;
-float32 K_u2 = 140;
+float32 Uref_u2 = 0.4167;
+float32 K_u2 = 30;
 float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
-float32 Uref_i = 1.777;
-float32 K_i = 3.5;
+float32 Uref_i = 1.5;
+float32 K_i = 4.175;
 float32 Uref_i2 = 1.777;
 float32 K_i2 = 3.5;
-float32 Uref_udc = 1.044;
-float32 K_udc = 140;
+float32 Uref_udc = 0;
+float32 K_udc = 10;
 float32 Uref_udc2 = 1.021;
 float32 K_udc2 = 70;
 float32 std_ig;
@@ -120,6 +123,7 @@ float32 outputPre_A14 = 0;
 float32 outputPre_A15 = 0;
 float32 outputPre_B2 = 0;
 float32 outputPre_B3 = 0;
+float32 outputPre_C2 = 0;
 float32 outputPre_C3 = 0;
 
 float32 inverter_std_I = 1;
@@ -308,6 +312,8 @@ interrupt void adca1_isr(void) {
   ADCBResults3[frameIndex] = AdcbResultRegs.ADCRESULT1;
   ADCBResults3_converted[frameIndex] = ADCBResults3[frameIndex] * 3.0 / 4096.0;
 
+  ADCCResults2[frameIndex] = AdccResultRegs.ADCRESULT1;
+  ADCCResults2_converted[frameIndex] = ADCCResults2[frameIndex] * 3.0 / 4096.0;
   ADCCResults3[frameIndex] = AdccResultRegs.ADCRESULT0;
   ADCCResults3_converted[frameIndex] = ADCCResults3[frameIndex] * 3.0 / 4096.0;
 
@@ -320,6 +326,7 @@ interrupt void adca1_isr(void) {
   ADCBResult2_mean = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre_B2, alpha_for_avg);
   ADCBResult3_mean = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre_B3, alpha_for_avg);
 
+  ADCCResult2_mean = low_pass_filter(ADCCResults2_converted[frameIndex], &outputPre_C2, alpha_for_avg);
   ADCCResult3_mean = low_pass_filter(ADCCResults3_converted[frameIndex], &outputPre_C3, alpha_for_avg);
 
   // ADCAResults2_converted[frameIndex] = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre1, alpha1);
@@ -331,11 +338,11 @@ interrupt void adca1_isr(void) {
   wt = wt + PI / 100 / 2 * SW_FREQ;
   if (wt > PI * 2) wt -= PI * 2;
 
-  U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
+  U2_result[frameIndex] = (ADCAResults3_converted[frameIndex] - Uref_u2) * K_u2;
   U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
-  ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
+  ig_result[frameIndex] = -(ADCBResults2_converted[frameIndex] - Uref_i) * K_i;
   ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i2) * K_i2;
-  Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
+  Udc_result[frameIndex] = (ADCCResults2_converted[frameIndex] - Uref_udc) * K_udc;
   Udc2_result[frameIndex] = (ADCAResults0_converted[frameIndex] - Uref_udc2) * K_udc2;
 
   // // pll input 为交流侧电压
@@ -407,10 +414,10 @@ interrupt void adca1_isr(void) {
   // change PWM duty
   //
   // changeCMP_value(pr1_out);
-  changeCMP_value(pr2_out);
+  // changeCMP_value(pr2_out);
   // changeCMP_value(pid_n1_out);
   // changeCMP_value_brige2(1 * err_i22);
-  // changeCMP_phase(wt);
+  changeCMP_phase(wt);
   // changeCMP_value_brige2(sin(wt));
   changeCMP_value_brige2(pr3_out);
   // changeCMP_value_brige2(-err_i22);
@@ -439,11 +446,11 @@ interrupt void adca1_isr(void) {
 }
 
 interrupt void xint1_isr(void) {
-  Uref_u2 = ADCAResult14_mean;
+  Uref_u2 = ADCAResult3_mean;
   Uref_u22 = ADCAResult2_mean;
-  Uref_i = ADCBResult3_mean;
+  Uref_i = ADCBResult2_mean;
   Uref_i2 = ADCAResult15_mean;
-  Uref_udc = ADCCResult3_mean;
+  Uref_udc = ADCCResult2_mean;
   Uref_udc2 = ADCAResult0_mean;
 
   // 差点忘了这个! 没有这个的话, 这个以及其它同组的中断都不会再被触发了
