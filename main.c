@@ -123,12 +123,16 @@ float32 outputPre_B3 = 0;
 float32 outputPre_C3 = 0;
 
 float32 inverter_std_I = 1;
-// float32 inverter_std_U2 = 21.2132;
-float32 inverter_std_U2 = 7.0711;
+float32 inverter_std_U2 = 21.2132;
+// float32 inverter_std_U2 = 14.14;
+// float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 float32 rectifier_std_I = 2;
-// float32 rectifier_std_Udc = 30;
-float32 rectifier_std_Udc = 10;
+float32 rectifier_std_Udc = 30;
+// float32 rectifier_std_Udc = 20;
+// float32 rectifier_std_Udc = 10;
+
+float32 triggerV = 18;
 
 /* 启动判断的相关变量 */
 bool b1;
@@ -231,7 +235,7 @@ void main(void) {
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(0.1, 1, 0, 3, -3, &pid_n1);
+  pid_nx_Init(0.05, 0.8, 0, 4.5, -4.5, &pid_n1);
 
   //
   // pr1 init
@@ -394,7 +398,7 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults2[frameIndex]);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U22_result[frameIndex]) >= 3;
+  b1 = fabsf(U22_result[frameIndex]) >= triggerV;
   b2 = b1 || b3;
   b3 = b2;
 
