@@ -77,11 +77,11 @@ Uint16 largeIndex;
 
 volatile Uint16 bufferFull;
 
-float32 Uref_u2 = 0.4167;
+float32 Uref_u2 = 0.62082231;
 float32 K_u2 = 30;
 float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
-float32 Uref_i = 1.5;
+float32 Uref_i = 1.48749113;
 float32 K_i = 4.175;
 float32 Uref_i2 = 1.777;
 float32 K_i2 = 3.5;
