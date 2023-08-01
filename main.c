@@ -78,10 +78,10 @@ float32 Uref_u2 = 1.047;
 float32 K_u2 = 140;
 float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
-float32 Uref_i = 1.777;
-float32 K_i = 3.5;
-float32 Uref_i2 = 1.777;
-float32 K_i2 = 3.5;
+float32 Uref_i = 1.5;
+float32 K_i = 4.1667;
+float32 Uref_i2 = 1.5;
+float32 K_i2 = 4.1667;
 float32 Uref_udc = 1.044;
 float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
@@ -356,7 +356,8 @@ interrupt void adca1_isr(void) {
   if (wt > PI * 2) wt -= PI * 2;
 
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
-  U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
+  // U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
+  U22_result[frameIndex] = U2_result[frameIndex];
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
   ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i2) * K_i2;
   Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
