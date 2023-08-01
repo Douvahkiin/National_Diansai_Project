@@ -132,7 +132,10 @@ float32 rectifier_std_Udc = 30;
 // float32 rectifier_std_Udc = 20;
 // float32 rectifier_std_Udc = 10;
 
-float32 triggerV = 18;
+// float32 triggerV = 18;
+float32 triggerV = 3;
+
+float32 pid_n1_limit = 5;
 
 /* 启动判断的相关变量 */
 bool b1;
@@ -235,7 +238,7 @@ void main(void) {
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(0.05, 0.8, 0, 4.5, -4.5, &pid_n1);
+  pid_nx_Init(0.05, 0.8, 0, pid_n1_limit / 0.8, -pid_n1_limit / 0.8, &pid_n1);
 
   //
   // pr1 init
@@ -253,9 +256,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr1);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr1);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr1);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr1);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr1);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr1);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr1);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr1);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr1);  // p=0.2, r=1
 
   //
   // pr2 init
@@ -266,9 +272,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr2);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr2);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr2);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr2);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr2);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr2);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr2);  // p=0.2, r=1
 
   //
   // pr3 init
@@ -279,9 +288,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr3);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr3);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr3);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr3);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr3);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr3);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr3);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr3);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr3);  // p=0.2, r=1
 
   wt1 = 0;
   wt2 = -2 * PI / 3;
@@ -356,8 +368,8 @@ interrupt void adca1_isr(void) {
   if (wt > PI * 2) wt -= PI * 2;
 
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
-  // U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
-  U22_result[frameIndex] = U2_result[frameIndex];
+  U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
+  // U22_result[frameIndex] = U2_result[frameIndex];
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
   ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i2) * K_i2;
   Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
@@ -399,9 +411,9 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults2[frameIndex]);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U22_result[frameIndex]) >= triggerV;
-  b2 = b1 || b3;
-  b3 = b2;
+  // b1 = fabsf(U22_result[frameIndex]) >= triggerV;
+  // b2 = b1 || b3;
+  // b3 = b2;
 
   //
   // (整流侧)直流电压环
@@ -414,7 +426,7 @@ interrupt void adca1_isr(void) {
   }
   float32 pid_n1_input = err_Udc;
   pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
-  pid_n1_out = saturation(pid_n1_out, 4.5, -4.5);
+  pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
 
   //
   // (整流侧)交流电流环
@@ -427,14 +439,6 @@ interrupt void adca1_isr(void) {
   }
   float32 pr3_input = -err_i22;
   float32 pr3_out = pr_run(pr3_input, &pr3);
-
-  if (b2) {
-    GpioDataRegs.GPASET.bit.GPIO5 = 1;
-    GpioDataRegs.GPASET.bit.GPIO7 = 1;
-  } else {
-    GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;
-    GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;
-  }
 
   //
   // change PWM duty
@@ -484,6 +488,11 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
+  pid_n1.integral = 0;
+  b2 = 1;
+  GpioDataRegs.GPASET.bit.GPIO5 = 1;
+  GpioDataRegs.GPASET.bit.GPIO7 = 1;
+
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 //
