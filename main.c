@@ -6,12 +6,15 @@
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
 #include "MACRO.h"
+#include "OLED.h"
 #include "filters.h"
 #include "keys.h"
 #include "math.h"
 #include "pid.h"
 #include "pll.h"
 #include "pr.h"
+#include "string.h"
+#include "utils.h"
 
 //
 // Function Prototypes
@@ -75,7 +78,6 @@ float32 wt3 = 0;
 Uint16 frameIndex;
 Uint16 largeIndex;
 
-volatile Uint16 bufferFull;
 
 float32 Uref_u2 = 0.62082231;
 float32 K_u2 = 30;
@@ -87,6 +89,12 @@ float32 Uref_i2 = 1.777;
 float32 K_i2 = 3.5;
 float32 Uref_udc = 0;
 float32 K_udc = 10;
+float32 Uref_i = 1.5;
+float32 K_i = 4.1667;
+float32 Uref_i2 = 1.5;
+float32 K_i2 = 4.1667;
+float32 Uref_udc = 1.044;
+float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
 float32 K_udc2 = 70;
 float32 std_ig;
@@ -127,16 +135,25 @@ float32 outputPre_C2 = 0;
 float32 outputPre_C3 = 0;
 
 float32 inverter_std_I = 1;
-// float32 inverter_std_U2 = 21.2132;
-float32 inverter_std_U2 = 7.0711;
+float32 inverter_std_U2 = 21.2132;
+// float32 inverter_std_U2 = 14.14;
+// float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 float32 rectifier_std_I = 2;
-// float32 rectifier_std_Udc = 30;
-float32 rectifier_std_Udc = 10;
+float32 rectifier_std_Udc = 30;
+// float32 rectifier_std_Udc = 20;
+// float32 rectifier_std_Udc = 10;
+
+// float32 triggerV = 18;
+float32 triggerV = 3;
+
+float32 pid_n1_limit = 5;
+
+int inverter_std_I_numArray[4];
 
 /* 启动判断的相关变量 */
-bool b1;
-bool b2;
+bool b1 = 0;
+bool b2 = 0;
 bool b3 = 0;
 bool b4 = 0;
 
@@ -198,7 +215,6 @@ void main(void) {
 
   frameIndex = 0;
   largeIndex = 0;
-  bufferFull = 0;
 
   // enable PIE interrupt
   PieCtrlRegs.PIEIER1.bit.INTx1 = 1;
@@ -213,9 +229,15 @@ void main(void) {
   // configure keys
   configure_keys();
 
+  // init OLED
+  OLED_Init();
+  OLED_ShowString(0, 0, "1919810", 16, 1);
+  OLED_ShowString(0, 16, "114514", 16, 1);
+  OLED_Refresh();
+
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(0.1, 1, 0, 3, -3, &pid_n1);
+  pid_nx_Init(0.05, 0.8, 0, pid_n1_limit / 0.8, -pid_n1_limit / 0.8, &pid_n1);
 
   //
   // pr1 init
@@ -233,9 +255,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr1);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr1);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr1);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr1);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr1);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr1);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr1);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr1);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr1);  // p=0.2, r=1
 
   //
   // pr2 init
@@ -246,9 +271,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr2);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr2);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr2);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr2);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr2);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr2);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr2);  // p=0.2, r=1
 
   //
   // pr3 init
@@ -259,13 +287,20 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr3);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr3);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr3);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr3);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr3);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr3);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr3);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr3);  // p=0.5, r=5
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr3);  // p=0.2, r=1
 
   wt1 = 0;
   wt2 = -2 * PI / 3;
   wt3 = 2 * PI / 3;
+
+  unsigned char s1[16] = {0};
+  unsigned char s2[16] = {0};
+  char const* s_stdI = "std I = ";
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -274,13 +309,21 @@ void main(void) {
   EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
-    // wait while ePWM causes ADC conversions, which then cause interrupts,
-    // which fill the results buffer, eventually setting the bufferFull flag
-    while (!bufferFull) {
+    OLED_Clear();
+    int len = strlen(s_stdI);
+    int i = 0;
+    for (; i < len; i++) {
+      s1[i] = s_stdI[i];
     }
-    bufferFull = 0;  // clear the buffer full flag
+    float2numarray(inverter_std_I, inverter_std_I_numArray);
+    numarray2str(s2, inverter_std_I_numArray);
 
-    // software breakpoint, hit run again to get updated conversions
+    OLED_ShowString(0, 0, s1, 16, 1);
+    OLED_ShowString(0, 16, s2, 16, 1);
+    OLED_Refresh();
+
+    DELAY_US(1000000);
+
     // asm("   ESTOP0");
   } while (1);
 }
@@ -381,9 +424,9 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults2[frameIndex]);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U22_result[frameIndex]) >= 3;
-  b2 = b1 || b3;
-  b3 = b2;
+  // b1 = fabsf(U22_result[frameIndex]) >= triggerV;
+  // b2 = b1 || b3;
+  // b3 = b2;
 
   //
   // (整流侧)直流电压环
@@ -396,7 +439,7 @@ interrupt void adca1_isr(void) {
   }
   float32 pid_n1_input = err_Udc;
   pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
-  pid_n1_out = saturation(pid_n1_out, 4.5, -4.5);
+  pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
 
   //
   // (整流侧)交流电流环
@@ -428,7 +471,6 @@ interrupt void adca1_isr(void) {
   largeIndex %= LARGE_BUFFER;
   if (BUFFER_SIZE <= frameIndex) {
     frameIndex = 0;
-    bufferFull = 1;
   }
   //
   // Check if overflow has occurred
@@ -458,6 +500,11 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
+  pid_n1.integral = 0;
+  b2 = 1;
+  GpioDataRegs.GPASET.bit.GPIO5 = 1;
+  GpioDataRegs.GPASET.bit.GPIO7 = 1;
+
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 //
