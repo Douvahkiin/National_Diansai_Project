@@ -87,9 +87,7 @@ float32 Uref_udc = 1.044;
 float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
 float32 K_udc2 = 70;
-float32 std_ig;
 float32 Udc;
-float32 std_Udc = 10;
 
 float32 U2_result[BUFFER_SIZE];
 float32 U22_result[BUFFER_SIZE];
@@ -123,11 +121,12 @@ float32 outputPre_B2 = 0;
 float32 outputPre_B3 = 0;
 float32 outputPre_C3 = 0;
 
+float32 rampInterval = 10;  // 10s
 // float32 inverter_std_I = 2.828427;
 float32 inverter_std_I = 2;
-float32 inverter_std_U2 = 33.941125;
+// float32 inverter_std_U2 = 33.941125;
 // float32 inverter_std_U2 = 21.2132034;
-// float32 inverter_std_U2 = 14.1421356;
+float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 // float32 rectifier_std_I = 2;
@@ -171,12 +170,12 @@ void main(void) {
   GpioCtrlRegs.GPAPUD.bit.GPIO0 = 0;   // Enable pullup on GPIO0
   GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 0;  // GPIO0 = GPIO0
   GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;   // GPIO0 = output
-  GpioDataRegs.GPASET.bit.GPIO0 = 1;   // Load output latch
+  GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;  // Load output latch
 
   GpioCtrlRegs.GPAPUD.bit.GPIO2 = 0;   // Enable pullup on GPIO2
   GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;  // GPIO2 = GPIO2
   GpioCtrlRegs.GPADIR.bit.GPIO2 = 1;   // GPIO2 = output
-  GpioDataRegs.GPASET.bit.GPIO2 = 1;   // Load output latch
+  GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;  // Load output latch
 
   GpioCtrlRegs.GPAPUD.bit.GPIO4 = 0;    // Enable pullup on GPIO4
   GpioCtrlRegs.GPAMUX1.bit.GPIO4 = 0;   // GPIO4 = GPIO4
@@ -409,30 +408,39 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults14[frameIndex]);
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
-  //
-  // (逆变侧)交流电压环
-  //
-  err1 = sin(wt) * inverter_std_U2 - U2_result[frameIndex];
-  float32 pr1_input = err1;
-  pr1_out = pr_run(pr1_input, &pr1);
+  static float32 std_U2 = 0;
 
-  //
-  // (逆变侧)交流电流环
-  //
-  // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-  err2 = pr1_out - ig_result[frameIndex];
-  float32 pr2_input = err2;
-  pr2_out = pr_run(pr2_input, &pr2);
+  if (b2) {
+    if (std_U2 < inverter_std_U2) {
+      std_U2 += inverter_std_U2 / rampInterval * 0.00005 * SW_FREQ;
+    }
 
-  // U22 pll
-  float32 pll_input = U22_result[frameIndex];
-  // float32 pll_input = inverter_std_U2 * sin(wt);
-  // pll 的结果
-  pll_result = pll_Run(pll_input);
-  // 用正弦便于判断正确
-  pll_result = cos(pll_result);
-  changeDACBVal(2048 + 2000.0 * pll_result);
-  // changeDACBVal(ADCAResults2[frameIndex]);
+    //
+    // (逆变侧)交流电压环
+    //
+    err1 = sin(wt) * std_U2 - U2_result[frameIndex];
+    float32 pr1_input = err1;
+    pr1_out = pr_run(pr1_input, &pr1);
+
+    //
+    // (逆变侧)交流电流环
+    //
+    // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
+    err2 = pr1_out - ig_result[frameIndex];
+    float32 pr2_input = err2;
+    pr2_out = pr_run(pr2_input, &pr2);
+
+    // // U22 pll
+    // float32 pll_input = U22_result[frameIndex];
+    // // float32 pll_input = inverter_std_U2 * sin(wt);
+    // // pll 的结果
+    // pll_result = pll_Run(pll_input);
+    // // 用正弦便于判断正确
+    // pll_result = cos(pll_result);
+    // changeDACBVal(2048 + 2000.0 * pll_result);
+    // changeDACBVal(ADCAResults2[frameIndex]);
+    changeCMP_value(pr2_out);
+  }
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
   // b1 = fabsf(U22_result[frameIndex]) >= triggerV;
@@ -468,7 +476,7 @@ interrupt void adca1_isr(void) {
   // change PWM duty
   //
   // changeCMP_value(pr1_out);
-  changeCMP_value(pr2_out);
+  // changeCMP_value(pr2_out);
   // changeCMP_value(pid_n1_out);
   // changeCMP_value_brige2(1 * err_i22);
   // changeCMP_value(sin(wt));
@@ -481,9 +489,7 @@ interrupt void adca1_isr(void) {
   frameIndex++;
   largeIndex++;
   largeIndex %= LARGE_BUFFER;
-  if (BUFFER_SIZE <= frameIndex) {
-    frameIndex = 0;
-  }
+  frameIndex %= BUFFER_SIZE;
   //
   // Check if overflow has occurred
   //
@@ -512,10 +518,9 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  pid_n1.integral = 0;
   b2 = 1;
-  GpioDataRegs.GPASET.bit.GPIO4 = 1;
-  GpioDataRegs.GPASET.bit.GPIO6 = 1;
+  GpioDataRegs.GPASET.bit.GPIO0 = 1;
+  GpioDataRegs.GPASET.bit.GPIO2 = 1;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
