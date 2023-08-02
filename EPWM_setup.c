@@ -15,8 +15,8 @@ void ConfigureEPWM(void) {
   EPwm1Regs.TBCTL.bit.PHSEN = TB_DISABLE;         // Disable phase loading
   EPwm1Regs.TBCTL.bit.PRDLD = TB_SHADOW;
   EPwm1Regs.TBCTL.bit.SYNCOSEL = TB_CTR_ZERO;
-  //// ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
-  // EPWMCLK already equals to SYSCLK / 2
+  ClkCfgRegs.PERCLKDIVSEL.bit.EPWMCLKDIV = 0;  // EPWMCLK = PLLSYSCLK
+  //// EPWMCLK already equals to SYSCLK / 2
   EPwm1Regs.TBCTL.bit.HSPCLKDIV = TB_DIV1;  // /1
   EPwm1Regs.TBCTL.bit.CLKDIV = TB_DIV1;
 
