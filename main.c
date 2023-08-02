@@ -13,6 +13,8 @@
 #include "pid.h"
 #include "pll.h"
 #include "pr.h"
+#include "string.h"
+#include "utils.h"
 
 //
 // Function Prototypes
@@ -72,8 +74,6 @@ float32 wt3 = 0;
 
 Uint16 frameIndex;
 Uint16 largeIndex;
-
-volatile Uint16 bufferFull;
 
 float32 Uref_u2 = 1.047;
 float32 K_u2 = 140;
@@ -137,6 +137,8 @@ float32 rectifier_std_Udc = 30;
 float32 triggerV = 3;
 
 float32 pid_n1_limit = 5;
+
+int inverter_std_I_numArray[4];
 
 /* 启动判断的相关变量 */
 bool b1 = 0;
@@ -222,7 +224,6 @@ void main(void) {
 
   frameIndex = 0;
   largeIndex = 0;
-  bufferFull = 0;
 
   // enable PIE interrupt
   PieCtrlRegs.PIEIER1.bit.INTx1 = 1;
@@ -306,6 +307,10 @@ void main(void) {
   wt2 = -2 * PI / 3;
   wt3 = 2 * PI / 3;
 
+  unsigned char s1[16] = {0};
+  unsigned char s2[16] = {0};
+  char const* s_stdI = "std I = ";
+
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm1Regs.ETSEL.bit.SOCAEN = 1;                 // enable SOCA
@@ -313,13 +318,21 @@ void main(void) {
   EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
-    // wait while ePWM causes ADC conversions, which then cause interrupts,
-    // which fill the results buffer, eventually setting the bufferFull flag
-    while (!bufferFull) {
+    OLED_Clear();
+    int len = strlen(s_stdI);
+    int i = 0;
+    for (; i < len; i++) {
+      s1[i] = s_stdI[i];
     }
-    bufferFull = 0;  // clear the buffer full flag
+    float2numarray(inverter_std_I, inverter_std_I_numArray);
+    numarray2str(s2, inverter_std_I_numArray);
 
-    // software breakpoint, hit run again to get updated conversions
+    OLED_ShowString(0, 0, s1, 16, 1);
+    OLED_ShowString(0, 16, s2, 16, 1);
+    OLED_Refresh();
+
+    DELAY_US(1000000);
+
     // asm("   ESTOP0");
   } while (1);
 }
@@ -465,7 +478,6 @@ interrupt void adca1_isr(void) {
   largeIndex %= LARGE_BUFFER;
   if (BUFFER_SIZE <= frameIndex) {
     frameIndex = 0;
-    bufferFull = 1;
   }
   //
   // Check if overflow has occurred

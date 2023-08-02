@@ -9,6 +9,7 @@
     "f2837xd_examples.h": "c",
     "pid.h": "c",
     "filter.h": "c",
-    "pll.h": "c"
+    "pll.h": "c",
+    "string.h": "c"
   }
 }
