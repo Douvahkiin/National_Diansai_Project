@@ -73,7 +73,7 @@ float32 pll_Run(float32 input) {
   pll.integral += preOut * pll.Ts;
   if (pll.integral >= 2 * PI) {
     pll.integral -= 2 * PI;
-    GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;  // toggle GPIO22
+    // GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;  // toggle GPIO22
   }
   pll.negSine = -sin(pll.integral);
   pll.posCosine = cos(pll.integral);

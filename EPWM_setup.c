@@ -203,39 +203,37 @@ void ConfigureEPWM(void) {
 }
 
 void changeCMP_phase(float32 wt) {
-  Uint16 cmp1 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
-  Uint16 cmp2 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
+  Uint16 cmp1 = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
+  Uint16 cmp2 = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
   EPwm1Regs.CMPA.bit.CMPA = cmp1;
   EPwm2Regs.CMPA.bit.CMPA = cmp2;
 }
 
 void changeCMP_EPWM1_phase(float32 wt) {
-  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
   EPwm1Regs.CMPA.bit.CMPA = cmp;
 }
 
 void changeCMP_EPWM2_phase(float32 wt) {
-  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
   EPwm2Regs.CMPA.bit.CMPA = cmp;
 }
 
 void changeCMP_EPWM3_phase(float32 wt) {
-  Uint16 cmp = (Uint16)(PWM_MID_COUNT - PWM_MID_COUNT * sin(wt));
+  Uint16 cmp = (Uint16)(PWM_MID_COUNT + PWM_MID_COUNT * sin(wt));
   EPwm3Regs.CMPA.bit.CMPA = cmp;
 }
 
-/// @brief 改变PWM占空比
-/// @param val 相当于sin(wt)
 void changeCMP_value(float32 val) {
-  Uint16 cmp1 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
-  Uint16 cmp2 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
+  Uint16 cmp1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
+  Uint16 cmp2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
   EPwm1Regs.CMPA.bit.CMPA = cmp1;
   EPwm2Regs.CMPA.bit.CMPA = cmp2;
 }
 
 void changeCMP_value_brige2(float32 val) {
-  Uint16 cmp1 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
-  Uint16 cmp2 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
+  Uint16 cmp1 = (PWM_MID_COUNT + PWM_MID_COUNT * val);
+  Uint16 cmp2 = (PWM_MID_COUNT - PWM_MID_COUNT * val);
   EPwm3Regs.CMPA.bit.CMPA = cmp1;
   EPwm4Regs.CMPA.bit.CMPA = cmp2;
 }

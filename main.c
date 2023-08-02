@@ -76,13 +76,13 @@ Uint16 frameIndex;
 Uint16 largeIndex;
 
 float32 Uref_u2 = 1.047;
-float32 K_u2 = 140;
+float32 K_u2 = 68;
 float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
-float32 Uref_i = 1.5;
-float32 K_i = 4.1667;
-float32 Uref_i2 = 1.5;
-float32 K_i2 = 4.1667;
+float32 Uref_i = 1.777;
+float32 K_i = 3.195;
+float32 Uref_i2 = 1.777;
+float32 K_i2 = 3.5;
 float32 Uref_udc = 1.044;
 float32 K_udc = 140;
 float32 Uref_udc2 = 1.021;
@@ -123,13 +123,15 @@ float32 outputPre_B2 = 0;
 float32 outputPre_B3 = 0;
 float32 outputPre_C3 = 0;
 
-float32 inverter_std_I = 1;
-float32 inverter_std_U2 = 21.2132;
-// float32 inverter_std_U2 = 14.14;
+// float32 inverter_std_I = 2.828427;
+float32 inverter_std_I = 2;
+float32 inverter_std_U2 = 33.941125;
+// float32 inverter_std_U2 = 21.2132034;
+// float32 inverter_std_U2 = 14.1421356;
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
-float32 rectifier_std_I = 2;
-float32 rectifier_std_Udc = 30;
+// float32 rectifier_std_I = 2;
+// float32 rectifier_std_Udc = 30;
 // float32 rectifier_std_Udc = 20;
 // float32 rectifier_std_Udc = 10;
 
@@ -166,25 +168,25 @@ void main(void) {
   GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;    // GPIO22 = output
   GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;  // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO1 = 0;   // Enable pullup on GPIO1
-  GpioCtrlRegs.GPAMUX1.bit.GPIO1 = 0;  // GPIO1 = GPIO1
-  GpioCtrlRegs.GPADIR.bit.GPIO1 = 1;   // GPIO1 = output
-  GpioDataRegs.GPASET.bit.GPIO1 = 1;   // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO0 = 0;   // Enable pullup on GPIO0
+  GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 0;  // GPIO0 = GPIO0
+  GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;   // GPIO0 = output
+  GpioDataRegs.GPASET.bit.GPIO0 = 1;   // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO3 = 0;   // Enable pullup on GPIO3
-  GpioCtrlRegs.GPAMUX1.bit.GPIO3 = 0;  // GPIO3 = GPIO3
-  GpioCtrlRegs.GPADIR.bit.GPIO3 = 1;   // GPIO3 = output
-  GpioDataRegs.GPASET.bit.GPIO3 = 1;   // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO2 = 0;   // Enable pullup on GPIO2
+  GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;  // GPIO2 = GPIO2
+  GpioCtrlRegs.GPADIR.bit.GPIO2 = 1;   // GPIO2 = output
+  GpioDataRegs.GPASET.bit.GPIO2 = 1;   // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO5 = 0;    // Enable pullup on GPIO5
-  GpioCtrlRegs.GPAMUX1.bit.GPIO5 = 0;   // GPIO5 = GPIO5
-  GpioCtrlRegs.GPADIR.bit.GPIO5 = 1;    // GPIO5 = output
-  GpioDataRegs.GPACLEAR.bit.GPIO5 = 1;  // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO4 = 0;    // Enable pullup on GPIO4
+  GpioCtrlRegs.GPAMUX1.bit.GPIO4 = 0;   // GPIO4 = GPIO4
+  GpioCtrlRegs.GPADIR.bit.GPIO4 = 1;    // GPIO4 = output
+  GpioDataRegs.GPACLEAR.bit.GPIO4 = 1;  // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO7 = 0;    // Enable pullup on GPIO7
-  GpioCtrlRegs.GPAMUX1.bit.GPIO7 = 0;   // GPIO7 = GPIO7
-  GpioCtrlRegs.GPADIR.bit.GPIO7 = 1;    // GPIO7 = output
-  GpioDataRegs.GPACLEAR.bit.GPIO7 = 1;  // Load output latch
+  GpioCtrlRegs.GPAPUD.bit.GPIO6 = 0;    // Enable pullup on GPIO6
+  GpioCtrlRegs.GPAMUX1.bit.GPIO6 = 0;   // GPIO6 = GPIO6
+  GpioCtrlRegs.GPADIR.bit.GPIO6 = 1;    // GPIO6 = output
+  GpioDataRegs.GPACLEAR.bit.GPIO6 = 1;  // Load output latch
   EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts
@@ -347,6 +349,8 @@ interrupt void adca1_isr(void) {
   AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
   AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
 
+  GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
+
   ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT2;
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
   ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT0;
@@ -435,30 +439,30 @@ interrupt void adca1_isr(void) {
   // b2 = b1 || b3;
   // b3 = b2;
 
-  //
-  // (整流侧)直流电压环
-  //
-  float32 err_Udc;
-  if (b2) {
-    err_Udc = rectifier_std_Udc - Udc2_result[frameIndex];
-  } else {
-    err_Udc = 0;
-  }
-  float32 pid_n1_input = err_Udc;
-  pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
-  pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
+  // //
+  // // (整流侧)直流电压环
+  // //
+  // float32 err_Udc;
+  // if (b2) {
+  //   err_Udc = rectifier_std_Udc - Udc2_result[frameIndex];
+  // } else {
+  //   err_Udc = 0;
+  // }
+  // float32 pid_n1_input = err_Udc;
+  // pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
+  // pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
 
-  //
-  // (整流侧)交流电流环
-  //
-  static float32 err_i22;
-  if (b2) {
-    err_i22 = pll_result * pid_n1_out - ig2_result[frameIndex];
-  } else {
-    err_i22 = 0;
-  }
-  float32 pr3_input = -err_i22;
-  float32 pr3_out = pr_run(pr3_input, &pr3);
+  // //
+  // // (整流侧)交流电流环
+  // //
+  // static float32 err_i22;
+  // if (b2) {
+  //   err_i22 = pll_result * pid_n1_out - ig2_result[frameIndex];
+  // } else {
+  //   err_i22 = 0;
+  // }
+  // float32 pr3_input = -err_i22;
+  // float32 pr3_out = pr_run(pr3_input, &pr3);
 
   //
   // change PWM duty
@@ -467,9 +471,10 @@ interrupt void adca1_isr(void) {
   changeCMP_value(pr2_out);
   // changeCMP_value(pid_n1_out);
   // changeCMP_value_brige2(1 * err_i22);
-  // changeCMP_phase(wt);
+  // changeCMP_value(sin(wt));
+  // changeCMP_value(0.7104 * sin(wt));
   // changeCMP_value_brige2(sin(wt));
-  changeCMP_value_brige2(pr3_out);
+  // changeCMP_value_brige2(pr3_out);
   // changeCMP_value_brige2(-err_i22);
   // changeCMP_value(0.8);
 
@@ -509,8 +514,8 @@ interrupt void xint1_isr(void) {
 interrupt void xint2_isr(void) {
   pid_n1.integral = 0;
   b2 = 1;
-  GpioDataRegs.GPASET.bit.GPIO5 = 1;
-  GpioDataRegs.GPASET.bit.GPIO7 = 1;
+  GpioDataRegs.GPASET.bit.GPIO4 = 1;
+  GpioDataRegs.GPASET.bit.GPIO6 = 1;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }

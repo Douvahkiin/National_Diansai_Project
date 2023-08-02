@@ -10,6 +10,8 @@
     "pid.h": "c",
     "filter.h": "c",
     "pll.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "adc_setup.h": "c",
+    "f28x_project.h": "c"
   }
 }
