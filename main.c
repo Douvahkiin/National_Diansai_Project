@@ -6,6 +6,7 @@
 #include "EPWM_setup.h"
 #include "F28x_Project.h"
 #include "MACRO.h"
+#include "OLED.h"
 #include "filters.h"
 #include "keys.h"
 #include "math.h"
@@ -235,6 +236,12 @@ void main(void) {
 
   // configure keys
   configure_keys();
+
+  // init OLED
+  OLED_Init();
+  OLED_ShowString(0, 0, "1919810", 16, 1);
+  OLED_ShowString(0, 16, "114514", 16, 1);
+  OLED_Refresh();
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
