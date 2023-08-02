@@ -334,6 +334,9 @@ interrupt void adca1_isr(void) {
   AdcbRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
   AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
 
+  // toggle GPIO22
+  GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
+
   ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT2;
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
   ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT0;

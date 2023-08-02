@@ -4,8 +4,8 @@
 //
 // Defines
 //
-#define BUFFER_SIZE 512
-#define LARGE_BUFFER 512
+#define BUFFER_SIZE 16
+#define LARGE_BUFFER 16
 #define PI 3.14159265
 
 #endif  // _MACRO_
