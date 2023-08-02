@@ -135,7 +135,7 @@ float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 rectifier_std_Udc = 10;
 
 // float32 triggerV = 18;
-float32 triggerV = 3;
+float32 triggerV = 7.0711;  // 5*sqrt(2)
 
 float32 pid_n1_limit = 5;
 
@@ -408,44 +408,50 @@ interrupt void adca1_isr(void) {
   // changeDACBVal(ADCAResults14[frameIndex]);
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
-  static float32 std_U2 = 0;
+  /* PR控制器启动判断, 启动后变量 b2 自锁 */
+  b1 = fabsf(U2_result[frameIndex]) >= triggerV;
+  b2 = b1 || b3;
+  b3 = b2;
+
+  // U2 pll
+  float32 pll_input = U2_result[frameIndex];
+  // float32 pll_input = inverter_std_U2 * sin(wt);
+  // pll 的结果
+  pll_result = pll_Run(pll_input);
+  // 用正弦便于判断正确
+  pll_result = cos(pll_result);
+  changeDACBVal(2048 + 2000.0 * pll_result);
+  // changeDACBVal(ADCAResults2[frameIndex]);
+
+  // //
+  // // (逆变侧)交流电压环
+  // //
+  // err1 = sin(wt) * std_U2 - U2_result[frameIndex];
+  // float32 pr1_input = err1;
+  // pr1_out = pr_run(pr1_input, &pr1);
+
+  //
+  // (逆变侧)交流电流环
+  //
+  // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
+  err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+  float32 pr2_input;
+  if (b2) {
+    pr2_input = err2;
+  } else {
+    pr2_input = 0;
+  }
+  pr2_out = pr_run(pr2_input, &pr2);
+
+  changeCMP_value(pr2_out);
 
   if (b2) {
-    if (std_U2 < inverter_std_U2) {
-      std_U2 += inverter_std_U2 / rampInterval * 0.00005 * SW_FREQ;
-    }
-
-    //
-    // (逆变侧)交流电压环
-    //
-    err1 = sin(wt) * std_U2 - U2_result[frameIndex];
-    float32 pr1_input = err1;
-    pr1_out = pr_run(pr1_input, &pr1);
-
-    //
-    // (逆变侧)交流电流环
-    //
-    // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-    err2 = pr1_out - ig_result[frameIndex];
-    float32 pr2_input = err2;
-    pr2_out = pr_run(pr2_input, &pr2);
-
-    // // U22 pll
-    // float32 pll_input = U22_result[frameIndex];
-    // // float32 pll_input = inverter_std_U2 * sin(wt);
-    // // pll 的结果
-    // pll_result = pll_Run(pll_input);
-    // // 用正弦便于判断正确
-    // pll_result = cos(pll_result);
-    // changeDACBVal(2048 + 2000.0 * pll_result);
-    // changeDACBVal(ADCAResults2[frameIndex]);
-    changeCMP_value(pr2_out);
+    GpioDataRegs.GPASET.bit.GPIO0 = 1;
+    GpioDataRegs.GPASET.bit.GPIO2 = 1;
+  } else {
+    GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
+    GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
   }
-
-  /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  // b1 = fabsf(U22_result[frameIndex]) >= triggerV;
-  // b2 = b1 || b3;
-  // b3 = b2;
 
   // //
   // // (整流侧)直流电压环
@@ -518,9 +524,9 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  b2 = 1;
-  GpioDataRegs.GPASET.bit.GPIO0 = 1;
-  GpioDataRegs.GPASET.bit.GPIO2 = 1;
+  // b2 = 1;
+  // GpioDataRegs.GPASET.bit.GPIO0 = 1;
+  // GpioDataRegs.GPASET.bit.GPIO2 = 1;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
