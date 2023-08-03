@@ -141,6 +141,8 @@ float32 pid_n1_limit = 5;
 
 int inverter_std_I_numArray[4];
 
+float32 DAADCAL = 1.5;
+
 /* 启动判断的相关变量 */
 bool b1 = 0;
 bool b2 = 0;
@@ -311,6 +313,7 @@ void main(void) {
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
   char const* s_stdI = "std I = ";
+  char const* s_DAADCAL = "DA AD calib";
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -320,12 +323,12 @@ void main(void) {
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
     OLED_Clear();
-    int len = strlen(s_stdI);
+    int len = strlen(s_DAADCAL);
     int i = 0;
     for (; i < len; i++) {
-      s1[i] = s_stdI[i];
+      s1[i] = s_DAADCAL[i];
     }
-    float2numarray(inverter_std_I, inverter_std_I_numArray);
+    float2numarray(DAADCAL, inverter_std_I_numArray);
     numarray2str(s2, inverter_std_I_numArray);
 
     OLED_ShowString(0, 0, s1, 16, 1);
@@ -349,6 +352,8 @@ interrupt void adca1_isr(void) {
   AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
 
   GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
+
+  changeDACAVal(DAADCAL / 3.0 * 4095);
 
   ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT2;
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
