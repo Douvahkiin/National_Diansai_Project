@@ -135,7 +135,11 @@ float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 rectifier_std_Udc = 20;
 // float32 rectifier_std_Udc = 10;
 
+// float32 triggerV = 180;
+// float32 triggerV = 50;
+// float32 triggerV = 30;
 // float32 triggerV = 18;
+// float32 triggerV = 10;
 float32 triggerV = 7.0711;  // 5*sqrt(2)
 
 float32 pid_n1_limit = 5;
@@ -309,6 +313,11 @@ void main(void) {
   wt2 = -2 * PI / 3;
   wt3 = 2 * PI / 3;
 
+  b1 = 0;
+  b2 = 0;
+  b3 = 0;
+  b4 = 0;
+
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
   char const* s_stdI = "std I = ";
@@ -410,9 +419,11 @@ interrupt void adca1_isr(void) {
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  b1 = fabsf(U2_result[frameIndex]) >= triggerV;
-  b2 = b1 || b3;
-  b3 = b2;
+  if (b4) {
+    b1 = fabsf(U2_result[frameIndex]) >= triggerV;
+    b2 = b1 || b3;
+    b3 = b2;
+  }
 
   // U2 pll
   float32 pll_input = U2_result[frameIndex];
@@ -421,8 +432,8 @@ interrupt void adca1_isr(void) {
   pll_result = pll_Run(pll_input);
   // 用正弦便于判断正确
   pll_result = cos(pll_result);
-  changeDACBVal(2048 + 2000.0 * pll_result);
-  // changeDACBVal(ADCAResults2[frameIndex]);
+  // changeDACBVal(2048 + 2000.0 * pll_result);
+  changeDACBVal(ADCAResults14[frameIndex]);
 
   // //
   // // (逆变侧)交流电压环
@@ -525,9 +536,7 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  // b2 = 1;
-  // GpioDataRegs.GPASET.bit.GPIO0 = 1;
-  // GpioDataRegs.GPASET.bit.GPIO2 = 1;
+  b4 = 1;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
