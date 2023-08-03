@@ -122,9 +122,9 @@ float32 outputPre_B3 = 0;
 float32 outputPre_C3 = 0;
 
 float32 rampInterval = 10;  // 10s
-// float32 inverter_std_I = 2.828427;
+float32 inverter_std_I = 2.828427;
 // float32 inverter_std_I = 2;
-float32 inverter_std_I = 1.41421356;
+// float32 inverter_std_I = 1.41421356;
 // float32 inverter_std_I = 1;
 // float32 inverter_std_U2 = 33.941125;
 // float32 inverter_std_U2 = 21.2132034;
@@ -140,8 +140,9 @@ float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 triggerV = 50;
 // float32 triggerV = 30;
 // float32 triggerV = 18;
+float32 triggerV = 16.9705627;  // 12*sqrt(2)
 // float32 triggerV = 10;
-float32 triggerV = 7.0711;  // 5*sqrt(2)
+// float32 triggerV = 7.0711;  // 5*sqrt(2)
 
 float32 pid_n1_limit = 5;
 
