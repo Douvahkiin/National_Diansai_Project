@@ -16,9 +16,9 @@ void float2numarray(float32 val, int displayNumArray[]) {
 }
 
 void numarray2str(unsigned char s[], int numarray[4]) {
-  s[0] = numarray[0] + 0x30;
-  s[1] = numarray[1] + 0x30;
-  s[0] = '.';
-  s[3] = numarray[3] + 0x30;
-  s[4] = numarray[4] + 0x30;
+  s[0] = numarray[3] + 0x30;
+  s[1] = numarray[2] + 0x30;
+  s[2] = '.';
+  s[3] = numarray[1] + 0x30;
+  s[4] = numarray[0] + 0x30;
 }

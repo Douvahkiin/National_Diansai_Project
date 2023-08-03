@@ -146,6 +146,8 @@ float32 triggerV = 16.9705627;  // 12*sqrt(2)
 
 float32 pid_n1_limit = 5;
 
+float32 DAADCAL_receiver = 0;
+
 int inverter_std_I_numArray[4];
 
 /* 启动判断的相关变量 */
@@ -323,6 +325,7 @@ void main(void) {
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
   char const* s_stdI = "std I = ";
+  char const* s_DAADReceive = "DA AD RX";
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -332,12 +335,12 @@ void main(void) {
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
     OLED_Clear();
-    int len = strlen(s_stdI);
+    int len = strlen(s_DAADReceive);
     int i = 0;
     for (; i < len; i++) {
-      s1[i] = s_stdI[i];
+      s1[i] = s_DAADReceive[i];
     }
-    float2numarray(inverter_std_I, inverter_std_I_numArray);
+    float2numarray(DAADCAL_receiver, inverter_std_I_numArray);
     numarray2str(s2, inverter_std_I_numArray);
 
     OLED_ShowString(0, 0, s1, 16, 1);
@@ -398,6 +401,8 @@ interrupt void adca1_isr(void) {
   // ADCBResults2_converted[frameIndex] = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre3, alpha3);
   // ADCBResults3_converted[frameIndex] = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre4, alpha4);
 
+  DAADCAL_receiver = ADCAResults2_converted[frameIndex];
+
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + PI / 100 / 2 * SW_FREQ;
   if (wt > PI * 2) wt -= PI * 2;
@@ -435,6 +440,7 @@ interrupt void adca1_isr(void) {
   // 用正弦便于判断正确
   pll_result = cos(pll_result);
   // changeDACBVal(2048 + 2000.0 * pll_result);
+  changeDACAVal(ADCBResults3[frameIndex]);
   changeDACBVal(ADCAResults14[frameIndex]);
 
   // //
