@@ -30,7 +30,7 @@ void pll_Init(float32 w0, float32 Vm) {
   SOGI_Integral1 = 0;
   SOGI_Integral2 = 0;
   SOGI_w0 = w0;  // 50*2*pi
-  SOGI_IntLimit = 25;
+  SOGI_IntLimit = 40;
   SOGI_Ts = 0.00005 * SW_FREQ;
 }
 
