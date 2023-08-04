@@ -1,5 +1,10 @@
 #include "utils.h"
 
+extern bool b1;
+extern bool b2;
+extern bool b3;
+extern bool b4;
+
 int MMOODDEE;
 
 // 浮点数转换为整数数组
@@ -50,11 +55,23 @@ void clearString(unsigned char s[]) {
 void modeChange(void) {
   if (GpioDataRegs.GPDDAT.bit.GPIO124 == 0) {
     MMOODDEE = 1;
+    b1 = 0;
+    b2 = 0;
+    b3 = 0;
+    b4 = 0;
   }
   if (GpioDataRegs.GPDDAT.bit.GPIO125 == 0) {
     MMOODDEE = 2;
+    b1 = 0;
+    b2 = 0;
+    b3 = 0;
+    b4 = 0;
   }
   if (GpioDataRegs.GPADAT.bit.GPIO29 == 0) {
     MMOODDEE = 3;
+    b1 = 0;
+    b2 = 0;
+    b3 = 0;
+    b4 = 0;
   }
 }

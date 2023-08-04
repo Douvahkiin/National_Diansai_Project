@@ -327,10 +327,8 @@ void main(void) {
   b4 = 0;
 
   unsigned char s1[16] = {0};
-  unsigned char s2[16] = {0};
   for (int i = 0; i < 16; i++) {
     s1[i] = ' ';
-    s2[i] = ' ';
   }
 
   // char const* s_stdI = "std I = ";
@@ -352,7 +350,6 @@ void main(void) {
     s_mode[5] = MMOODDEE + 0x30;
     OLED_ClearGRAM();
     // clearString(s1);
-    // clearString(s2);
     // placeString(s1, "Io1 rms", 0);
     placeString(s1, s_mode, 10);
     float2numarray(inverter_std_I, Display_numArray);
@@ -360,7 +357,6 @@ void main(void) {
 
     // // OLED_ShowString(10, 0, s_1mode0, 16, 1);
     OLED_ShowString(0, 0, s1, 16, 1);
-    // OLED_ShowString(0, 0, s2, 16, 1);
 
     OLED_Refresh();
 
@@ -401,7 +397,7 @@ interrupt void adca1_isr(void) {
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
 
-  if (MODE == 1) {
+  if (MMOODDEE == 1) {
     // U2 pll
     float32 pll_input = U2_result[frameIndex];
     // float32 pll_input = inverter_std_U2 * sin(wt);
@@ -425,6 +421,73 @@ interrupt void adca1_isr(void) {
     } else {
       GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
       GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+    }
+  }
+
+  if (MMOODDEE == 2) {
+    if (INVERTER_NO == 1) {
+      static float32 std_U2 = 0;
+      if (b2) {
+        if (std_U2 < inverter_std_U2) {
+          std_U2 += inverter_std_U2 / rampInterval * 0.00005 * SW_FREQ;
+        }
+
+        //
+        // (逆变侧)交流电压环
+        //
+        err1 = sin(wt) * std_U2 - U2_result[frameIndex];
+        float32 pr1_input = err1;
+        pr1_out = pr_run(pr1_input, &pr1);
+
+        //
+        // (逆变侧)交流电流环
+        //
+        // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
+        err2 = pr1_out - ig_result[frameIndex];
+        float32 pr2_input = err2;
+        pr2_out = pr_run(pr2_input, &pr2);
+        changeCMP_value(pr2_out);
+      }
+    }
+    if (INVERTER_NO == 2) {
+      /* PR控制器启动判断, 启动后变量 b2 自锁 */
+      if (b4) {
+        b1 = fabsf(U2_result[frameIndex]) >= triggerV;
+        b2 = b1 || b3;
+        b3 = b2;
+      }
+
+      // U2 pll
+      float32 pll_input = U2_result[frameIndex];
+      // float32 pll_input = inverter_std_U2 * sin(wt);
+      // pll 的结果
+      pll_result = pll_Run(pll_input);
+      // 用正弦便于判断正确
+      pll_result = cos(pll_result);
+      changeDACBVal(2048 + 2000.0 * pll_result);
+      // changeDACBVal(ADCAResults14[frameIndex]);
+
+      //
+      // (逆变侧)交流电流环
+      //
+      err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+      float32 pr2_input;
+      if (b2) {
+        pr2_input = err2;
+      } else {
+        pr2_input = 0;
+      }
+      pr2_out = pr_run(pr2_input, &pr2);
+
+      changeCMP_value(pr2_out);
+
+      if (b2) {
+        GpioDataRegs.GPASET.bit.GPIO0 = 1;
+        GpioDataRegs.GPASET.bit.GPIO2 = 1;
+      } else {
+        GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
+        GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+      }
     }
   }
 
@@ -456,9 +519,17 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  if (MODE == 1) {
+  if (MMOODDEE == 1) {
     b2 = !b2;
     pid_n2.integral = 0;
+  } else if (MMOODDEE == 2) {
+    if (INVERTER_NO == 1) {
+      b2 = 1;
+      GpioDataRegs.GPASET.bit.GPIO0 = 1;
+      GpioDataRegs.GPASET.bit.GPIO2 = 1;
+    } else if (INVERTER_NO == 2) {
+      b4 = 1;
+    }
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;

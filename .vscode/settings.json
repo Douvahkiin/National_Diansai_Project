@@ -13,6 +13,8 @@
     "string.h": "c",
     "adc_setup.h": "c",
     "f28x_project.h": "c",
-    "oled.h": "c"
+    "oled.h": "c",
+    "utils.h": "c",
+    "macro.h": "c"
   }
 }
