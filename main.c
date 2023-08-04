@@ -23,6 +23,8 @@ interrupt void adca1_isr(void);
 interrupt void xint1_isr(void);
 interrupt void xint2_isr(void);
 interrupt void xint3_isr(void);
+interrupt void xint4_isr(void);
+interrupt void xint5_isr(void);
 
 //
 // externs
@@ -223,6 +225,8 @@ void main(void) {
   PieVectTable.XINT1_INT = &xint1_isr;
   PieVectTable.XINT2_INT = &xint2_isr;
   PieVectTable.XINT3_INT = &xint3_isr;
+  PieVectTable.XINT4_INT = &xint4_isr;
+  PieVectTable.XINT5_INT = &xint5_isr;
   EDIS;
 
   // Configure the ADC and power it up
@@ -248,6 +252,8 @@ void main(void) {
   PieCtrlRegs.PIEIER1.bit.INTx4 = 1;  // Enable PIE Group 1 INT4
   PieCtrlRegs.PIEIER1.bit.INTx5 = 1;  // Enable PIE Group 1 INT5
   PieCtrlRegs.PIEIER12.bit.INTx1 = 1;  // XINT3
+  PieCtrlRegs.PIEIER12.bit.INTx2 = 1;  // XINT4
+  PieCtrlRegs.PIEIER12.bit.INTx3 = 1;  // XINT5
 
   // sync ePWM
   EALLOW;
@@ -336,9 +342,7 @@ void main(void) {
 
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
-  unsigned char s_empty[16] = {0};
   // char const* s_stdI = "std I = ";
-  char const* s_DAADReceive = "DA AD RX";
   char const* s_U2_q = "U2 q:";
 
   // take conversions indefinitely in loop
@@ -524,14 +528,13 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  b2 = 1;
+  b2 = !b2;
   pid_n2.integral = 0;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
 interrupt void xint3_isr(void) {
-  b2 = 0;
   intcount++;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
@@ -539,3 +542,14 @@ interrupt void xint3_isr(void) {
 //
 // End of file
 //
+
+interrupt void xint4_isr(void) {
+  intcount++;
+
+  PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
+}
+interrupt void xint5_isr(void) {
+  intcount++;
+
+  PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
+}
