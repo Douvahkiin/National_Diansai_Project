@@ -115,6 +115,10 @@ float32 outputPre_B3 = 0;
 float32 outputPre_C3 = 0;
 
 float32 rampInterval = 10;  // 10s
+float32 inverter_std_Io = 4;
+float32 inverter_std_Io1 = 2;
+float32 inverter_std_Io2 = 2;
+float32 inverter_K = 1;
 float32 inverter_std_I = 2.828427;
 // float32 inverter_std_I = 2;
 // float32 inverter_std_I = 1.41421356;
@@ -146,7 +150,8 @@ float32 pid_n2_limit = 0.5;
 
 float32 DAADCAL_receiver = 0;
 
-int Display_numArray[4];
+int Display_numArray[5];
+int Display_numArray2[5];
 
 float32 U2_q = 0;
 
@@ -346,8 +351,9 @@ void main(void) {
 
   MMOODDEE = 0;
 
-  unsigned char s_mode[7] = " MODE ";
-  int map[4] = {1, 3, 4, 5};
+  unsigned char s_mode[3] = "  ";
+  int map[4] = {0, 2, 3, 4};
+  int map2[4] = {7, 9, 10, 11};
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -359,21 +365,26 @@ void main(void) {
     static bool blink = 1;
     modeChange();
     s_mode[0] = INVERTER_NO + 0x30;
-    s_mode[5] = MMOODDEE + 0x30;
+    s_mode[1] = MMOODDEE + 0x30;
     OLED_ClearGRAM();
     // clearString(s1);
     // placeString(s1, "Io1 rms", 0);
-    placeString(s1, s_mode, 10);
-    float2numarray(inverter_std_I_rms, Display_numArray);
+    placeString(s1, s_mode, 14);
+    float2numarray(inverter_std_Io, Display_numArray);
+    float2numarray(inverter_K, Display_numArray2);
     numarray2str(s1, Display_numArray);
+    numarray2str2(s1, Display_numArray2);
     if (blink) {
-      s1[map[digitPos]] = ' ';
+      if (digitPos < 4) {
+        s1[map[digitPos]] = ' ';
+      } else {
+        s1[map2[digitPos - 4]] = ' ';
+      }
       blink = false;
     } else {
       blink = true;
     }
 
-    // // OLED_ShowString(10, 0, s_1mode0, 16, 1);
     OLED_ShowString(0, 0, s1, 16, 1);
 
     OLED_Refresh();
@@ -530,8 +541,13 @@ interrupt void adca1_isr(void) {
     //
     // (逆变侧)交流电流环
     //
-
-    inverter_std_I = inverter_std_I_rms * sqrt(2);
+    inverter_std_Io1 = inverter_std_Io / (1 + 1 / inverter_K);
+    inverter_std_Io2 = inverter_std_Io / (1 + inverter_K);
+    if (INVERTER_NO == 1) {
+      inverter_std_I = inverter_std_Io1 * sqrt(2);
+    } else if (INVERTER_NO == 2) {
+      inverter_std_I = inverter_std_Io2 * sqrt(2);
+    }
     err2 = pll_result * inverter_std_I - ig_result[frameIndex];
     float32 pr4_input;
     if (b2) {
@@ -613,7 +629,7 @@ interrupt void xint3_isr(void) {
 
   if (MMOODDEE == 3) {
     digitPos++;
-    digitPos %= 4;
+    digitPos %= 8;
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
@@ -625,7 +641,11 @@ interrupt void xint3_isr(void) {
 interrupt void xint4_isr(void) {
   if (MMOODDEE == 3) {
     // minus
-    inverter_std_I_rms -= powf(10, -digitPos);
+    if (digitPos < 4) {
+      inverter_std_Io -= powf(10, -digitPos);
+    } else {
+      inverter_K -= powf(10, -(digitPos - 4));
+    }
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
@@ -633,7 +653,11 @@ interrupt void xint4_isr(void) {
 interrupt void xint5_isr(void) {
   if (MMOODDEE == 3) {
     // plus
-    inverter_std_I_rms += powf(10, -digitPos);
+    if (digitPos < 4) {
+      inverter_std_Io += powf(10, -digitPos);
+    } else {
+      inverter_K += powf(10, -(digitPos - 4));
+    }
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;

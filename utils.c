@@ -22,13 +22,22 @@ void float2numarray(float32 val, int displayNumArray[]) {
   }
 }
 
-void numarray2str(unsigned char s[], int numarray[4]) {
-  s[0] = numarray[4] + 0x30;
-  s[1] = numarray[3] + 0x30;
-  s[2] = '.';
-  s[3] = numarray[2] + 0x30;
-  s[4] = numarray[1] + 0x30;
-  s[5] = numarray[0] + 0x30;
+void numarray2str(unsigned char s[], int numarray[5]) {
+  // s[0] = numarray[4] + 0x30;
+  s[0] = numarray[3] + 0x30;
+  s[1] = '.';
+  s[2] = numarray[2] + 0x30;
+  s[3] = numarray[1] + 0x30;
+  s[4] = numarray[0] + 0x30;
+}
+
+void numarray2str2(unsigned char s[], int numarray[5]) {
+  // s[7] = numarray[4] + 0x30;
+  s[7] = numarray[3] + 0x30;
+  s[8] = '.';
+  s[9] = numarray[2] + 0x30;
+  s[10] = numarray[1] + 0x30;
+  s[11] = numarray[0] + 0x30;
 }
 
 float32 alpha_beta2dq(float32 alpha, float32 beta, float32 wt) {
