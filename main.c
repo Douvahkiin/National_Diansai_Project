@@ -22,6 +22,7 @@
 interrupt void adca1_isr(void);
 interrupt void xint1_isr(void);
 interrupt void xint2_isr(void);
+interrupt void xint3_isr(void);
 
 //
 // externs
@@ -139,8 +140,8 @@ float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 triggerV = 180;
 // float32 triggerV = 50;
 // float32 triggerV = 30;
-// float32 triggerV = 18;
-float32 triggerV = 16.9705627;  // 12*sqrt(2)
+float32 triggerV = 18;
+// float32 triggerV = 16.9705627;  // 12*sqrt(2)
 // float32 triggerV = 10;
 // float32 triggerV = 7.0711;  // 5*sqrt(2)
 
@@ -216,6 +217,7 @@ void main(void) {
   PieVectTable.ADCA1_INT = &adca1_isr;  // function for ADCA interrupt 1
   PieVectTable.XINT1_INT = &xint1_isr;
   PieVectTable.XINT2_INT = &xint2_isr;
+  PieVectTable.XINT3_INT = &xint3_isr;
   EDIS;
 
   // Configure the ADC and power it up
@@ -229,6 +231,7 @@ void main(void) {
 
   // Enable global Interrupts and higher priority real-time debug events:
   IER |= M_INT1;  // Enable group 1 interrupts
+  IER |= M_INT12;  // Enable group 12 interrupts
   EINT;           // Enable Global interrupt INTM
   ERTM;           // Enable Global realtime interrupt DBGM
 
@@ -239,6 +242,7 @@ void main(void) {
   PieCtrlRegs.PIEIER1.bit.INTx1 = 1;
   PieCtrlRegs.PIEIER1.bit.INTx4 = 1;  // Enable PIE Group 1 INT4
   PieCtrlRegs.PIEIER1.bit.INTx5 = 1;  // Enable PIE Group 1 INT5
+  PieCtrlRegs.PIEIER12.bit.INTx1 = 1;  // XINT3
 
   // sync ePWM
   EALLOW;
@@ -290,11 +294,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr2);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr2);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr2);  // p=0.1, r=20
-  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
   // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr2);  // p=0.05, r=5
   // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr2);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr2);  // p=0.5, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
+  pr_init(1, -1.9966, 0.99686, 0.30784, -0.59899, 0.29122, &pr2);  // p=0.3, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr2);  // p=0.2, r=1
 
   //
@@ -347,7 +352,7 @@ void main(void) {
     OLED_ShowString(0, 16, s2, 16, 1);
     OLED_Refresh();
 
-    DELAY_US(1000000);
+    DELAY_US(100000);
 
     // asm("   ESTOP0");
   } while (1);
@@ -426,11 +431,6 @@ interrupt void adca1_isr(void) {
   // // changeDACAVal(2048 + 2000.0 * pll_result);
 
   /* PR控制器启动判断, 启动后变量 b2 自锁 */
-  if (b4) {
-    b1 = fabsf(U2_result[frameIndex]) >= triggerV;
-    b2 = b1 || b3;
-    b3 = b2;
-  }
 
   // U2 pll
   float32 pll_input = U2_result[frameIndex];
@@ -544,9 +544,15 @@ interrupt void xint1_isr(void) {
 }
 
 interrupt void xint2_isr(void) {
-  b4 = 1;
+  b2 = 1;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
+}
+
+interrupt void xint3_isr(void) {
+  b2 = 0;
+
+  PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }
 //
 // End of file
