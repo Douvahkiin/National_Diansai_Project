@@ -38,6 +38,18 @@ void configure_keys(void) {
   GpioCtrlRegs.GPBDIR.bit.GPIO59 = 0;    // input
   GpioCtrlRegs.GPBQSEL2.bit.GPIO59 = 2;  // XINT5 Qual using 6 samples
 
+  GpioCtrlRegs.GPDMUX2.bit.GPIO124 = 0;   // GPIO
+  GpioCtrlRegs.GPDDIR.bit.GPIO124 = 0;    // input
+  GpioCtrlRegs.GPDQSEL2.bit.GPIO124 = 2;  // KEY6 Qual using 6 samples
+
+  GpioCtrlRegs.GPDMUX2.bit.GPIO125 = 0;   // GPIO
+  GpioCtrlRegs.GPDDIR.bit.GPIO125 = 0;    // input
+  GpioCtrlRegs.GPDQSEL2.bit.GPIO125 = 2;  // KEY7 Qual using 6 samples
+
+  GpioCtrlRegs.GPAMUX2.bit.GPIO29 = 0;   // GPIO
+  GpioCtrlRegs.GPADIR.bit.GPIO29 = 0;    // input
+  GpioCtrlRegs.GPAQSEL2.bit.GPIO29 = 2;  // KEY8 Qual using 6 samples
+
   GpioCtrlRegs.GPDCTRL.bit.QUALPRD3 = 0xFF;  // GPIO122~GPIO123: Each sampling window is 510*SYSCLKOUT
   GpioCtrlRegs.GPBCTRL.bit.QUALPRD3 = 0xFF;  // GPIO122~GPIO123: Each sampling window is 510*SYSCLKOUT
   EDIS;

@@ -16,6 +16,9 @@
 #include "string.h"
 #include "utils.h"
 
+// MODE
+extern int MMOODDEE;
+
 //
 // Function Prototypes
 //
@@ -154,7 +157,7 @@ float32 pid_n2_limit = 0.5;
 
 float32 DAADCAL_receiver = 0;
 
-int inverter_std_I_numArray[4];
+int Display_numArray[4];
 
 float32 U2_q = 0;
 
@@ -184,14 +187,14 @@ void main(void) {
   GpioCtrlRegs.GPADIR.bit.GPIO22 = 1;    // GPIO22 = output
   GpioDataRegs.GPACLEAR.bit.GPIO22 = 1;  // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO0 = 0;   // Enable pullup on GPIO0
-  GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 0;  // GPIO0 = GPIO0
-  GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;   // GPIO0 = output
+  GpioCtrlRegs.GPAPUD.bit.GPIO0 = 0;    // Enable pullup on GPIO0
+  GpioCtrlRegs.GPAMUX1.bit.GPIO0 = 0;   // GPIO0 = GPIO0
+  GpioCtrlRegs.GPADIR.bit.GPIO0 = 1;    // GPIO0 = output
   GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;  // Load output latch
 
-  GpioCtrlRegs.GPAPUD.bit.GPIO2 = 0;   // Enable pullup on GPIO2
-  GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;  // GPIO2 = GPIO2
-  GpioCtrlRegs.GPADIR.bit.GPIO2 = 1;   // GPIO2 = output
+  GpioCtrlRegs.GPAPUD.bit.GPIO2 = 0;    // Enable pullup on GPIO2
+  GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;   // GPIO2 = GPIO2
+  GpioCtrlRegs.GPADIR.bit.GPIO2 = 1;    // GPIO2 = output
   GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;  // Load output latch
 
   GpioCtrlRegs.GPAPUD.bit.GPIO4 = 0;    // Enable pullup on GPIO4
@@ -239,18 +242,18 @@ void main(void) {
   SetupADCEpwm();
 
   // Enable global Interrupts and higher priority real-time debug events:
-  IER |= M_INT1;  // Enable group 1 interrupts
+  IER |= M_INT1;   // Enable group 1 interrupts
   IER |= M_INT12;  // Enable group 12 interrupts
-  EINT;           // Enable Global interrupt INTM
-  ERTM;           // Enable Global realtime interrupt DBGM
+  EINT;            // Enable Global interrupt INTM
+  ERTM;            // Enable Global realtime interrupt DBGM
 
   frameIndex = 0;
   largeIndex = 0;
 
   // enable PIE interrupt
   PieCtrlRegs.PIEIER1.bit.INTx1 = 1;
-  PieCtrlRegs.PIEIER1.bit.INTx4 = 1;  // Enable PIE Group 1 INT4
-  PieCtrlRegs.PIEIER1.bit.INTx5 = 1;  // Enable PIE Group 1 INT5
+  PieCtrlRegs.PIEIER1.bit.INTx4 = 1;   // Enable PIE Group 1 INT4
+  PieCtrlRegs.PIEIER1.bit.INTx5 = 1;   // Enable PIE Group 1 INT5
   PieCtrlRegs.PIEIER12.bit.INTx1 = 1;  // XINT3
   PieCtrlRegs.PIEIER12.bit.INTx2 = 1;  // XINT4
   PieCtrlRegs.PIEIER12.bit.INTx3 = 1;  // XINT5
@@ -342,8 +345,17 @@ void main(void) {
 
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
+  for (int i = 0; i < 16; i++) {
+    s1[i] = ' ';
+    s2[i] = ' ';
+  }
+
   // char const* s_stdI = "std I = ";
-  char const* s_U2_q = "U2 q:";
+  // unsigned const char* s_U2_q = "U2 q:";
+
+  MMOODDEE = 0;
+
+  unsigned char s_mode[7] = " MODE ";
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -352,15 +364,18 @@ void main(void) {
   EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
+    modeChange();
+    s_mode[0] = INVERTER_NO + 0x30;
+    s_mode[5] = MMOODDEE + 0x30;
     OLED_ClearGRAM();
-    int len = strlen(s_U2_q);
-    int i = 0;
-    for (; i < len; i++) {
-      s1[i] = s_U2_q[i];
-    }
-    float2numarray(U2_q, inverter_std_I_numArray);
-    numarray2str(s2, inverter_std_I_numArray);
+    clearString(s1);
+    clearString(s2);
+    placeString(s1, "Io1 rms", 0);
+    placeString(s1, s_mode, 10);
+    float2numarray(inverter_std_I, Display_numArray);
+    numarray2str(s2, Display_numArray);
 
+    // OLED_ShowString(10, 0, s_1mode0, 16, 1);
     OLED_ShowString(0, 0, s1, 16, 1);
     OLED_ShowString(0, 16, s2, 16, 1);
     OLED_Refresh();
@@ -382,6 +397,8 @@ interrupt void adca1_isr(void) {
   AdccRegs.ADCINTFLGCLR.bit.ADCINT1 = 1;
 
   GpioDataRegs.GPATOGGLE.bit.GPIO22 = 1;
+
+  // modeChange();
 
   ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT2;
   ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
