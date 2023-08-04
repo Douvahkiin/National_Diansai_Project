@@ -43,64 +43,51 @@ extern struct _pll pll;
 //
 // Globals
 //
-Uint16 ADCAResults0[BUFFER_SIZE];
-float32 ADCAResults0_converted[BUFFER_SIZE];
-Uint16 ADCAResults2[BUFFER_SIZE];
-float32 ADCAResults2_converted[BUFFER_SIZE];
-Uint16 ADCAResults3[BUFFER_SIZE];
-float32 ADCAResults3_converted[BUFFER_SIZE];
+// Uint16 ADCAResults0[BUFFER_SIZE];
+// float32 ADCAResults0_converted[BUFFER_SIZE];
+// Uint16 ADCAResults2[BUFFER_SIZE];
+// float32 ADCAResults2_converted[BUFFER_SIZE];
+// Uint16 ADCAResults3[BUFFER_SIZE];
+// float32 ADCAResults3_converted[BUFFER_SIZE];
 Uint16 ADCAResults14[BUFFER_SIZE];
 float32 ADCAResults14_converted[BUFFER_SIZE];
-Uint16 ADCAResults15[BUFFER_SIZE];
-float32 ADCAResults15_converted[BUFFER_SIZE];
+// Uint16 ADCAResults15[BUFFER_SIZE];
+// float32 ADCAResults15_converted[BUFFER_SIZE];
 
-Uint16 ADCBResults2[BUFFER_SIZE];
-float32 ADCBResults2_converted[BUFFER_SIZE];
+// Uint16 ADCBResults2[BUFFER_SIZE];
+// float32 ADCBResults2_converted[BUFFER_SIZE];
 Uint16 ADCBResults3[BUFFER_SIZE];
 float32 ADCBResults3_converted[BUFFER_SIZE];
 
-Uint16 ADCCResults3[BUFFER_SIZE];
-float32 ADCCResults3_converted[BUFFER_SIZE];
+// Uint16 ADCCResults3[BUFFER_SIZE];
+// float32 ADCCResults3_converted[BUFFER_SIZE];
 
-float32 ADCAResult0_mean = 0;
-float32 ADCAResult2_mean = 0;
-float32 ADCAResult3_mean = 0;
+// float32 ADCAResult0_mean = 0;
+// float32 ADCAResult2_mean = 0;
+// float32 ADCAResult3_mean = 0;
 float32 ADCAResult14_mean = 0;
-float32 ADCAResult15_mean = 0;
+// float32 ADCAResult15_mean = 0;
 
-float32 ADCBResult2_mean = 0;
+// float32 ADCBResult2_mean = 0;
 float32 ADCBResult3_mean = 0;
 
-float32 ADCCResult3_mean = 0;
+// float32 ADCCResult3_mean = 0;
 
 float32 wt = 0;
-float32 wt1 = 0;
-float32 wt2 = 0;
-float32 wt3 = 0;
 
 Uint16 frameIndex;
 Uint16 largeIndex;
 
 float32 Uref_u2 = 1.047;
 float32 K_u2 = 69.2;
-float32 Uref_u22 = 1.035;
-float32 K_u22 = 35.7;
 float32 Uref_i = 1.777;
 float32 K_i = 3.195;
-float32 Uref_i2 = 1.777;
-float32 K_i2 = 3.5;
 float32 Uref_udc = 1.044;
 float32 K_udc = 140;
-float32 Uref_udc2 = 1.021;
-float32 K_udc2 = 70;
-float32 Udc;
 
 float32 U2_result[BUFFER_SIZE];
-float32 U22_result[BUFFER_SIZE];
 float32 Udc_result[BUFFER_SIZE];
-float32 Udc2_result[BUFFER_SIZE];
 float32 ig_result[BUFFER_SIZE];
-float32 ig2_result[BUFFER_SIZE];
 float32 pll_result;
 float32 pid_n1_out;
 float32 err1;
@@ -334,10 +321,6 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr3);  // p=0.2, r=1
 
-  wt1 = 0;
-  wt2 = -2 * PI / 3;
-  wt3 = 2 * PI / 3;
-
   b1 = 0;
   b2 = 0;
   b3 = 0;
@@ -368,16 +351,17 @@ void main(void) {
     s_mode[0] = INVERTER_NO + 0x30;
     s_mode[5] = MMOODDEE + 0x30;
     OLED_ClearGRAM();
-    clearString(s1);
-    clearString(s2);
-    placeString(s1, "Io1 rms", 0);
+    // clearString(s1);
+    // clearString(s2);
+    // placeString(s1, "Io1 rms", 0);
     placeString(s1, s_mode, 10);
     float2numarray(inverter_std_I, Display_numArray);
-    numarray2str(s2, Display_numArray);
+    numarray2str(s1, Display_numArray);
 
-    // OLED_ShowString(10, 0, s_1mode0, 16, 1);
+    // // OLED_ShowString(10, 0, s_1mode0, 16, 1);
     OLED_ShowString(0, 0, s1, 16, 1);
-    OLED_ShowString(0, 16, s2, 16, 1);
+    // OLED_ShowString(0, 0, s2, 16, 1);
+
     OLED_Refresh();
 
     DELAY_US(100000);
@@ -400,117 +384,48 @@ interrupt void adca1_isr(void) {
 
   // modeChange();
 
-  ADCAResults0[frameIndex] = AdcaResultRegs.ADCRESULT2;
-  ADCAResults0_converted[frameIndex] = ADCAResults0[frameIndex] * 3.0 / 4096.0;
-  ADCAResults2[frameIndex] = AdcaResultRegs.ADCRESULT0;
-  ADCAResults2_converted[frameIndex] = ADCAResults2[frameIndex] * 3.0 / 4096.0;
-  ADCAResults3[frameIndex] = AdcaResultRegs.ADCRESULT1;
-  ADCAResults3_converted[frameIndex] = ADCAResults3[frameIndex] * 3.0 / 4096.0;
   ADCAResults14[frameIndex] = AdcaResultRegs.ADCRESULT14;
   ADCAResults14_converted[frameIndex] = ADCAResults14[frameIndex] * 3.0 / 4096.0;
-  ADCAResults15[frameIndex] = AdcaResultRegs.ADCRESULT15;
-  ADCAResults15_converted[frameIndex] = ADCAResults15[frameIndex] * 3.0 / 4096.0;
-  // changeDACAVal(ADCAResults14[frameIndex]);
 
-  ADCBResults2[frameIndex] = AdcbResultRegs.ADCRESULT0;
-  ADCBResults2_converted[frameIndex] = ADCBResults2[frameIndex] * 3.0 / 4096.0;
   ADCBResults3[frameIndex] = AdcbResultRegs.ADCRESULT1;
   ADCBResults3_converted[frameIndex] = ADCBResults3[frameIndex] * 3.0 / 4096.0;
 
-  ADCCResults3[frameIndex] = AdccResultRegs.ADCRESULT0;
-  ADCCResults3_converted[frameIndex] = ADCCResults3[frameIndex] * 3.0 / 4096.0;
-
-  ADCAResult0_mean = low_pass_filter(ADCAResults0_converted[frameIndex], &outputPre_A0, alpha_for_avg);
-  ADCAResult2_mean = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre_A2, alpha_for_avg);
-  ADCAResult3_mean = low_pass_filter(ADCAResults3_converted[frameIndex], &outputPre_A3, alpha_for_avg);
   ADCAResult14_mean = low_pass_filter(ADCAResults14_converted[frameIndex], &outputPre_A14, alpha_for_avg);
-  ADCAResult15_mean = low_pass_filter(ADCAResults15_converted[frameIndex], &outputPre_A15, alpha_for_avg);
 
-  ADCBResult2_mean = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre_B2, alpha_for_avg);
   ADCBResult3_mean = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre_B3, alpha_for_avg);
-
-  ADCCResult3_mean = low_pass_filter(ADCCResults3_converted[frameIndex], &outputPre_C3, alpha_for_avg);
-
-  // ADCAResults2_converted[frameIndex] = low_pass_filter(ADCAResults2_converted[frameIndex], &outputPre1, alpha1);
-  // ADCAResults3_converted[frameIndex] = low_pass_filter(ADCAResults3_converted[frameIndex], &outputPre2, alpha2);
-  // ADCBResults2_converted[frameIndex] = low_pass_filter(ADCBResults2_converted[frameIndex], &outputPre3, alpha3);
-  // ADCBResults3_converted[frameIndex] = low_pass_filter(ADCBResults3_converted[frameIndex], &outputPre4, alpha4);
-
-  DAADCAL_receiver = ADCAResults2_converted[frameIndex];
 
   /* 这是周期为50Hz的正弦波表示 */
   wt = wt + PI / 100 / 2 * SW_FREQ;
   if (wt > PI * 2) wt -= PI * 2;
 
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
-  U22_result[frameIndex] = (ADCAResults2_converted[frameIndex] - Uref_u22) * K_u22;
-  // U22_result[frameIndex] = U2_result[frameIndex];
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
-  ig2_result[frameIndex] = (ADCAResults15_converted[frameIndex] - Uref_i2) * K_i2;
-  Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
-  Udc2_result[frameIndex] = (ADCAResults0_converted[frameIndex] - Uref_udc2) * K_udc2;
 
-  // U2 pll
-  float32 pll_input = U2_result[frameIndex];
-  // float32 pll_input = inverter_std_U2 * sin(wt);
-  // pll 的结果
-  pll_result = pll_Run(pll_input);
-  // 用正弦便于判断正确
-  pll_result = cos(pll_result);
-  // changeDACBVal(2048 + 2000.0 * pll_result);
-  // changeDACAVal(ADCBResults3[frameIndex]);
-  changeDACBVal(ADCAResults14[frameIndex]);
+  if (MODE == 1) {
+    // U2 pll
+    float32 pll_input = U2_result[frameIndex];
+    // float32 pll_input = inverter_std_U2 * sin(wt);
+    // pll 的结果
+    pll_result = pll_Run(pll_input);
+    // 用正弦便于判断正确
+    pll_result = cos(pll_result);
+    // changeDACBVal(2048 + 2000.0 * pll_result);
+    // changeDACAVal(ADCBResults3[frameIndex]);
+    changeDACBVal(ADCAResults14[frameIndex]);
 
-  //
-  // (逆变侧)交流电压环
-  //
-  // err1 = sin(wt) * inverter_std_U2 - U2_result[frameIndex];
-  // float32 pr1_input;
-  // if (b2) {
-  //   pr1_input = err1;
-  // } else {
-  //   pr1_input = 0;
-  // }
-  // pr1_out = pr_run(pr1_input, &pr1);
-
-  float32 err_U2_q = inverter_std_U2 - U2_q;
-  float32 pid_n2_input = b2 ? err_U2_q : 0;
-  float32 pid_n2_out = pid_nx_Run(pid_n2_input, &pid_n2);
-  pid_n2_out = saturation(pid_n2_out, pid_n2_limit, -pid_n2_limit);
-  float32 pwm_sig = (pid_n2_out + 0.5) * sin(wt);
-  changeCMP_value(pwm_sig);
-  // changeCMP_value(sin(wt));
-
-  //
-  // (逆变侧)交流电流环
-  //
-  // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-  // err2 = pll_result * inverter_std_I - ig_result[frameIndex];
-  // err2 = pr1_out - ig_result[frameIndex];
-  // float32 pr2_input;
-  // float32 pid_n1_input;
-  // if (b2) {
-  //   pr2_input = err2;
-  //   pid_n1_input = err2;
-  // } else {
-  //   pr2_input = 0;
-  //   pid_n1_input = 0;
-  // }
-  // pr2_out = pr_run(pr2_input, &pr2);
-  // pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
-  // pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
-  // changeDACAVal(2048 + 2000.0 * err1 / inverter_std_U2);
-
-  // changeCMP_value(pr1_out);
-  // changeCMP_value(pr2_out);
-  // changeCMP_value(pid_n1_out);
-
-  if (b2) {
-    GpioDataRegs.GPASET.bit.GPIO0 = 1;
-    GpioDataRegs.GPASET.bit.GPIO2 = 1;
-  } else {
-    GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
-    GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+    float32 err_U2_q = inverter_std_U2 - U2_q;
+    float32 pid_n2_input = b2 ? err_U2_q : 0;
+    float32 pid_n2_out = pid_nx_Run(pid_n2_input, &pid_n2);
+    pid_n2_out = saturation(pid_n2_out, pid_n2_limit, -pid_n2_limit);
+    float32 pwm_sig = (pid_n2_out + 0.5) * sin(wt);
+    changeCMP_value(pwm_sig);
+    if (b2) {
+      GpioDataRegs.GPASET.bit.GPIO0 = 1;
+      GpioDataRegs.GPASET.bit.GPIO2 = 1;
+    } else {
+      GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
+      GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+    }
   }
 
   frameIndex++;
@@ -534,19 +449,17 @@ interrupt void adca1_isr(void) {
 
 interrupt void xint1_isr(void) {
   Uref_u2 = ADCAResult14_mean;
-  Uref_u22 = ADCAResult2_mean;
   Uref_i = ADCBResult3_mean;
-  Uref_i2 = ADCAResult15_mean;
-  Uref_udc = ADCCResult3_mean;
-  Uref_udc2 = ADCAResult0_mean;
 
   // 差点忘了这个! 没有这个的话, 这个以及其它同组的中断都不会再被触发了
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
 interrupt void xint2_isr(void) {
-  b2 = !b2;
-  pid_n2.integral = 0;
+  if (MODE == 1) {
+    b2 = !b2;
+    pid_n2.integral = 0;
+  }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }

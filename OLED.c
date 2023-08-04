@@ -350,6 +350,9 @@ void OLED_ShowChar(u8 x, u8 y, u8 chr, u8 size1, u8 mode) {
     size2 = (size1 / 8 + ((size1 % 8) ? 1 : 0)) * (size1 / 2);  // 得到字体一个字符对应点阵集所占的字节数
   chr1 = chr - ' ';                                             // 计算偏移后的值
   for (i = 0; i < size2; i++) {
+    // if (i == 1) {
+    //   asm("   ESTOP0");
+    // }
     if (size1 == 16) {
       temp = asc2_1608[chr1][i];
     }  // 调用1608字体
