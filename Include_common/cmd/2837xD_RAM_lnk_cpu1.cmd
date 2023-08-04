@@ -89,7 +89,7 @@ SECTIONS
 #else
    .pinit           : > RAMM0,     PAGE = 0
    .ebss            : > RAMGS6,    PAGE = 1
-   .econst          : > RAMLS5,    PAGE = 1
+   .econst          : > RAMGS4,    PAGE = 1
    .esysmem         : > RAMLS5,    PAGE = 1
 #endif
 

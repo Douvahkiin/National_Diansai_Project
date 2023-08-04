@@ -15,6 +15,7 @@
     "f28x_project.h": "c",
     "oled.h": "c",
     "utils.h": "c",
-    "macro.h": "c"
+    "macro.h": "c",
+    "math.h": "c"
   }
 }

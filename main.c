@@ -119,6 +119,8 @@ float32 inverter_std_I = 2.828427;
 // float32 inverter_std_I = 2;
 // float32 inverter_std_I = 1.41421356;
 // float32 inverter_std_I = 1;
+float32 inverter_std_I_MODE2 = 2.828427;
+float32 inverter_std_I_rms = 2;
 float32 inverter_std_U2 = 33.941125;
 // float32 inverter_std_U2 = 21.2132034;
 // float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
@@ -147,6 +149,8 @@ float32 DAADCAL_receiver = 0;
 int Display_numArray[4];
 
 float32 U2_q = 0;
+
+int digitPos = 1;
 
 /* 启动判断的相关变量 */
 bool b1 = 0;
@@ -253,6 +257,9 @@ void main(void) {
   // configure keys
   configure_keys();
 
+  // value control
+  digitPos = 1;
+
   // init OLED
   OLED_Init();
   OLED_ShowString(0, 0, "1919810", 16, 1);
@@ -321,6 +328,9 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr3);  // p=0.2, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr3);  // p=0.2, r=1
 
+  // pr4 init
+  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr4);  // p=0.2, r=5
+
   b1 = 0;
   b2 = 0;
   b3 = 0;
@@ -337,6 +347,7 @@ void main(void) {
   MMOODDEE = 0;
 
   unsigned char s_mode[7] = " MODE ";
+  int map[4] = {1, 3, 4, 5};
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -345,6 +356,7 @@ void main(void) {
   EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
+    static bool blink = 1;
     modeChange();
     s_mode[0] = INVERTER_NO + 0x30;
     s_mode[5] = MMOODDEE + 0x30;
@@ -352,8 +364,14 @@ void main(void) {
     // clearString(s1);
     // placeString(s1, "Io1 rms", 0);
     placeString(s1, s_mode, 10);
-    float2numarray(inverter_std_I, Display_numArray);
+    float2numarray(inverter_std_I_rms, Display_numArray);
     numarray2str(s1, Display_numArray);
+    if (blink) {
+      s1[map[digitPos]] = ' ';
+      blink = false;
+    } else {
+      blink = true;
+    }
 
     // // OLED_ShowString(10, 0, s_1mode0, 16, 1);
     OLED_ShowString(0, 0, s1, 16, 1);
@@ -442,7 +460,6 @@ interrupt void adca1_isr(void) {
         //
         // (逆变侧)交流电流环
         //
-        // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
         err2 = pr1_out - ig_result[frameIndex];
         float32 pr2_input = err2;
         pr2_out = pr_run(pr2_input, &pr2);
@@ -470,7 +487,7 @@ interrupt void adca1_isr(void) {
       //
       // (逆变侧)交流电流环
       //
-      err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+      err2 = pll_result * inverter_std_I_MODE2 - ig_result[frameIndex];
       float32 pr2_input;
       if (b2) {
         pr2_input = err2;
@@ -488,6 +505,50 @@ interrupt void adca1_isr(void) {
         GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
         GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
       }
+    }
+  }
+
+  if (MMOODDEE == 3) {
+    // U2 pll
+    float32 pll_input = U2_result[frameIndex];
+    // float32 pll_input = inverter_std_U2 * sin(wt);
+    // pll 的结果
+    pll_result = pll_Run(pll_input);
+    // 用正弦便于判断正确
+    pll_result = cos(pll_result);
+    // changeDACBVal(2048 + 2000.0 * pll_result);
+    changeDACAVal(ADCBResults3[frameIndex]);
+    changeDACBVal(ADCAResults14[frameIndex]);
+
+    // //
+    // // (逆变侧)交流电压环
+    // //
+    // err1 = sin(wt) * std_U2 - U2_result[frameIndex];
+    // float32 pr1_input = err1;
+    // pr1_out = pr_run(pr1_input, &pr1);
+
+    //
+    // (逆变侧)交流电流环
+    //
+
+    inverter_std_I = inverter_std_I_rms * sqrt(2);
+    err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+    float32 pr4_input;
+    if (b2) {
+      pr4_input = err2;
+    } else {
+      pr4_input = 0;
+    }
+    float32 pr4_out = pr_run(pr4_input, &pr4);
+
+    changeCMP_value(pr4_out);
+
+    if (b2) {
+      GpioDataRegs.GPASET.bit.GPIO0 = 1;
+      GpioDataRegs.GPASET.bit.GPIO2 = 1;
+    } else {
+      GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
+      GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
     }
   }
 
@@ -531,6 +592,8 @@ interrupt void xint2_isr(void) {
       b4 = 1;
       b2 = 0;
     }
+  } else if (MMOODDEE == 3) {
+    b2 = !b2;
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
@@ -548,6 +611,11 @@ interrupt void xint3_isr(void) {
     }
   }
 
+  if (MMOODDEE == 3) {
+    digitPos++;
+    digitPos %= 4;
+  }
+
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }
 //
@@ -555,12 +623,18 @@ interrupt void xint3_isr(void) {
 //
 
 interrupt void xint4_isr(void) {
-  intcount++;
+  if (MMOODDEE == 3) {
+    // minus
+    inverter_std_I_rms -= powf(10, -digitPos);
+  }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }
 interrupt void xint5_isr(void) {
-  intcount++;
+  if (MMOODDEE == 3) {
+    // plus
+    inverter_std_I_rms += powf(10, -digitPos);
+  }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }
