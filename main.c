@@ -529,6 +529,7 @@ interrupt void xint2_isr(void) {
       GpioDataRegs.GPASET.bit.GPIO2 = 1;
     } else if (INVERTER_NO == 2) {
       b4 = 1;
+      b2 = 0;
     }
   }
 
@@ -536,7 +537,16 @@ interrupt void xint2_isr(void) {
 }
 
 interrupt void xint3_isr(void) {
-  intcount++;
+  if (MMOODDEE == 2) {
+    if (INVERTER_NO == 1) {
+      b2 = 0;
+      GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
+      GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
+    } else if (INVERTER_NO == 2) {
+      b4 = 0;
+      b2 = 0;
+    }
+  }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }
