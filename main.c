@@ -77,7 +77,7 @@ Uint16 frameIndex;
 Uint16 largeIndex;
 
 float32 Uref_u2 = 1.047;
-float32 K_u2 = 68;
+float32 K_u2 = 69.2;
 float32 Uref_u22 = 1.035;
 float32 K_u22 = 35.7;
 float32 Uref_i = 1.777;
@@ -127,9 +127,9 @@ float32 inverter_std_I = 2.828427;
 // float32 inverter_std_I = 2;
 // float32 inverter_std_I = 1.41421356;
 // float32 inverter_std_I = 1;
-// float32 inverter_std_U2 = 33.941125;
+float32 inverter_std_U2 = 33.941125;
 // float32 inverter_std_U2 = 21.2132034;
-float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
+// float32 inverter_std_U2 = 14.1421356;  // 10*sqrt(2)
 // float32 inverter_std_U2 = 7.0711;
 // float32 inverter_std_U2 = 2.828;
 // float32 rectifier_std_I = 2;
@@ -145,11 +145,16 @@ float32 triggerV = 18;
 // float32 triggerV = 10;
 // float32 triggerV = 7.0711;  // 5*sqrt(2)
 
-float32 pid_n1_limit = 5;
+int intcount = 0;
+
+float32 pid_n1_limit = 1;
+float32 pid_n2_limit = 0.5;
 
 float32 DAADCAL_receiver = 0;
 
 int inverter_std_I_numArray[4];
+
+float32 U2_q = 0;
 
 /* 启动判断的相关变量 */
 bool b1 = 0;
@@ -260,7 +265,8 @@ void main(void) {
 
   // pll, pid init
   pll_Init(2 * PI * 50, 2);  // 50Hz
-  pid_nx_Init(0.05, 0.8, 0, pid_n1_limit / 0.8, -pid_n1_limit / 0.8, &pid_n1);
+  pid_nx_Init(0.15, 0, 0, pid_n1_limit, -pid_n1_limit, &pid_n1);
+  pid_nx_Init(0.01, 7, 0, pid_n2_limit / 7, -pid_n2_limit / 7, &pid_n2);
 
   //
   // pr1 init
@@ -278,8 +284,9 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr1);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr1);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr1);  // p=0.1, r=20
-  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
-  // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr1);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr1);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr1);  // p=0.05, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.032841, -0.049915, 0.01708, &pr1);  // p=0.025, r=5
   // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr1);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr1);  // p=0.5, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr1);  // p=0.2, r=5
@@ -294,12 +301,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 1.0314, -1.9966, 0.96550, &pr2);  // p=1, r=20
   // pr_init(1, -1.9966, 0.99686, 0.53136, -0.99831, 0.46707, &pr2);  // p=0.5, r=20
   // pr_init(1, -1.9966, 0.99686, 0.13136, -0.19966, 0.068322, &pr2);  // p=0.1, r=20
-  // pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
+  pr_init(1, -1.9966, 0.99686, 0.10784, -0.19966, 0.091845, &pr2);  // p=0.1, r=5
   // pr_init(1, -1.9966, 0.99686, 0.065682, -0.099831, 0.034161, &pr2);  // p=0.05, r=5
   // pr_init(1, -1.9966, 0.99686, 0.11568, -0.19966, 0.084004, &pr2);  // p=0.1, r=10
   // pr_init(1, -1.9966, 0.99686, 0.50784, -0.99831, 0.49059, &pr2);  // p=0.5, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr2);  // p=0.2, r=5
-  pr_init(1, -1.9966, 0.99686, 0.30784, -0.59899, 0.29122, &pr2);  // p=0.3, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.30784, -0.59899, 0.29122, &pr2);  // p=0.3, r=5
   // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr2);  // p=0.2, r=1
 
   //
@@ -329,8 +336,10 @@ void main(void) {
 
   unsigned char s1[16] = {0};
   unsigned char s2[16] = {0};
-  char const* s_stdI = "std I = ";
+  unsigned char s_empty[16] = {0};
+  // char const* s_stdI = "std I = ";
   char const* s_DAADReceive = "DA AD RX";
+  char const* s_U2_q = "U2 q:";
 
   // take conversions indefinitely in loop
   EPwm1Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
@@ -339,13 +348,13 @@ void main(void) {
   EPwm3Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   EPwm4Regs.TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN;  // unfreeze, and enter updown count mode
   do {
-    OLED_Clear();
-    int len = strlen(s_DAADReceive);
+    OLED_ClearGRAM();
+    int len = strlen(s_U2_q);
     int i = 0;
     for (; i < len; i++) {
-      s1[i] = s_DAADReceive[i];
+      s1[i] = s_U2_q[i];
     }
-    float2numarray(DAADCAL_receiver, inverter_std_I_numArray);
+    float2numarray(U2_q, inverter_std_I_numArray);
     numarray2str(s2, inverter_std_I_numArray);
 
     OLED_ShowString(0, 0, s1, 16, 1);
@@ -420,18 +429,6 @@ interrupt void adca1_isr(void) {
   Udc_result[frameIndex] = (ADCCResults3_converted[frameIndex] - Uref_udc) * K_udc;
   Udc2_result[frameIndex] = (ADCAResults0_converted[frameIndex] - Uref_udc2) * K_udc2;
 
-  // // pll input 为交流侧电压
-  // float32 pll_input = U2_result[frameIndex];
-  // // float32 pll_input = inverter_std_U2 * sin(wt);
-  // // pll 的结果
-  // pll_result = pll_Run(pll_input);
-  // // 用正弦便于判断正确
-  // pll_result = cos(pll_result);
-  // changeDACBVal(ADCAResults14[frameIndex]);
-  // // changeDACAVal(2048 + 2000.0 * pll_result);
-
-  /* PR控制器启动判断, 启动后变量 b2 自锁 */
-
   // U2 pll
   float32 pll_input = U2_result[frameIndex];
   // float32 pll_input = inverter_std_U2 * sin(wt);
@@ -440,30 +437,52 @@ interrupt void adca1_isr(void) {
   // 用正弦便于判断正确
   pll_result = cos(pll_result);
   // changeDACBVal(2048 + 2000.0 * pll_result);
-  changeDACAVal(ADCBResults3[frameIndex]);
+  // changeDACAVal(ADCBResults3[frameIndex]);
   changeDACBVal(ADCAResults14[frameIndex]);
 
-  // //
-  // // (逆变侧)交流电压环
-  // //
-  // err1 = sin(wt) * std_U2 - U2_result[frameIndex];
-  // float32 pr1_input = err1;
+  //
+  // (逆变侧)交流电压环
+  //
+  // err1 = sin(wt) * inverter_std_U2 - U2_result[frameIndex];
+  // float32 pr1_input;
+  // if (b2) {
+  //   pr1_input = err1;
+  // } else {
+  //   pr1_input = 0;
+  // }
   // pr1_out = pr_run(pr1_input, &pr1);
+
+  float32 err_U2_q = inverter_std_U2 - U2_q;
+  float32 pid_n2_input = b2 ? err_U2_q : 0;
+  float32 pid_n2_out = pid_nx_Run(pid_n2_input, &pid_n2);
+  pid_n2_out = saturation(pid_n2_out, pid_n2_limit, -pid_n2_limit);
+  float32 pwm_sig = (pid_n2_out + 0.5) * sin(wt);
+  changeCMP_value(pwm_sig);
+  // changeCMP_value(sin(wt));
 
   //
   // (逆变侧)交流电流环
   //
   // err2 = sin(wt) * inverter_std_I - ig_result[frameIndex];
-  err2 = pll_result * inverter_std_I - ig_result[frameIndex];
-  float32 pr2_input;
-  if (b2) {
-    pr2_input = err2;
-  } else {
-    pr2_input = 0;
-  }
-  pr2_out = pr_run(pr2_input, &pr2);
+  // err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+  // err2 = pr1_out - ig_result[frameIndex];
+  // float32 pr2_input;
+  // float32 pid_n1_input;
+  // if (b2) {
+  //   pr2_input = err2;
+  //   pid_n1_input = err2;
+  // } else {
+  //   pr2_input = 0;
+  //   pid_n1_input = 0;
+  // }
+  // pr2_out = pr_run(pr2_input, &pr2);
+  // pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
+  // pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
+  // changeDACAVal(2048 + 2000.0 * err1 / inverter_std_U2);
 
-  changeCMP_value(pr2_out);
+  // changeCMP_value(pr1_out);
+  // changeCMP_value(pr2_out);
+  // changeCMP_value(pid_n1_out);
 
   if (b2) {
     GpioDataRegs.GPASET.bit.GPIO0 = 1;
@@ -472,45 +491,6 @@ interrupt void adca1_isr(void) {
     GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
     GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
   }
-
-  // //
-  // // (整流侧)直流电压环
-  // //
-  // float32 err_Udc;
-  // if (b2) {
-  //   err_Udc = rectifier_std_Udc - Udc2_result[frameIndex];
-  // } else {
-  //   err_Udc = 0;
-  // }
-  // float32 pid_n1_input = err_Udc;
-  // pid_n1_out = pid_nx_Run(pid_n1_input, &pid_n1);
-  // pid_n1_out = saturation(pid_n1_out, pid_n1_limit, -pid_n1_limit);
-
-  // //
-  // // (整流侧)交流电流环
-  // //
-  // static float32 err_i22;
-  // if (b2) {
-  //   err_i22 = pll_result * pid_n1_out - ig2_result[frameIndex];
-  // } else {
-  //   err_i22 = 0;
-  // }
-  // float32 pr3_input = -err_i22;
-  // float32 pr3_out = pr_run(pr3_input, &pr3);
-
-  //
-  // change PWM duty
-  //
-  // changeCMP_value(pr1_out);
-  // changeCMP_value(pr2_out);
-  // changeCMP_value(pid_n1_out);
-  // changeCMP_value_brige2(1 * err_i22);
-  // changeCMP_value(sin(wt));
-  // changeCMP_value(0.7104 * sin(wt));
-  // changeCMP_value_brige2(sin(wt));
-  // changeCMP_value_brige2(pr3_out);
-  // changeCMP_value_brige2(-err_i22);
-  // changeCMP_value(0.8);
 
   frameIndex++;
   largeIndex++;
@@ -545,12 +525,14 @@ interrupt void xint1_isr(void) {
 
 interrupt void xint2_isr(void) {
   b2 = 1;
+  pid_n2.integral = 0;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
 
 interrupt void xint3_isr(void) {
   b2 = 0;
+  intcount++;
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP12;
 }

@@ -2,6 +2,7 @@
 
 struct _pll pll;
 extern struct _pid pid_pll;
+extern float32 U2_q;
 float32 SOGI_K;
 float32 SOGI_Integral1;
 float32 SOGI_Integral2;
@@ -77,5 +78,6 @@ float32 pll_Run(float32 input) {
   }
   pll.negSine = -sin(pll.integral);
   pll.posCosine = cos(pll.integral);
+  U2_q = alpha_beta2dq(alpha, beta, pll.integral);
   return pll.integral;
 }

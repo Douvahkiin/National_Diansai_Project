@@ -22,3 +22,9 @@ void numarray2str(unsigned char s[], int numarray[4]) {
   s[3] = numarray[1] + 0x30;
   s[4] = numarray[0] + 0x30;
 }
+
+float32 alpha_beta2dq(float32 alpha, float32 beta, float32 wt) {
+  float32 d = -alpha * sin(wt) + beta * cos(wt);
+  float32 q = alpha * cos(wt) + beta * sin(wt);
+  return q;
+}

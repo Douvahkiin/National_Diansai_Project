@@ -19,11 +19,11 @@ void configure_keys(void) {
   GpioCtrlRegs.GPDMUX2.bit.GPIO123 = 0;   // GPIO
   GpioCtrlRegs.GPDDIR.bit.GPIO123 = 0;    // input
   GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 0;  // XINT2 Synch to SYSCLKOUT only
+  // GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
+  // GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window is 510*SYSCLKOUT
 
   GpioCtrlRegs.GPDMUX2.bit.GPIO122 = 0;   // GPIO
   GpioCtrlRegs.GPDDIR.bit.GPIO122 = 0;    // input
   GpioCtrlRegs.GPDQSEL2.bit.GPIO122 = 0;  // XINT2 Synch to SYSCLKOUT only
-  // GpioCtrlRegs.GPDQSEL2.bit.GPIO123 = 2;     // XINT2 Qual using 6 samples
-  // GpioCtrlRegs.GPDCTRL.bit.QUALPRD0 = 0xFF;  // Each sampling window is 510*SYSCLKOUT
   EDIS;
 }

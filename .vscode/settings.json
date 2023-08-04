@@ -12,6 +12,7 @@
     "pll.h": "c",
     "string.h": "c",
     "adc_setup.h": "c",
-    "f28x_project.h": "c"
+    "f28x_project.h": "c",
+    "oled.h": "c"
   }
 }
