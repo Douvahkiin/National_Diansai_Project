@@ -38,7 +38,12 @@ extern struct _pr pr3;
 extern struct _pr pr4;
 extern struct _pid pid_n1;
 extern struct _pid pid_n2;
-extern struct _pll pll;
+extern struct _pll pll1;
+extern struct _sogi sogi1;
+extern struct _pid pid_pll1;
+extern struct _pll pll2;
+extern struct _sogi sogi2;
+extern struct _pid pid_pll2;
 
 //
 // Globals
@@ -88,7 +93,8 @@ float32 K_udc = 140;
 float32 U2_result[BUFFER_SIZE];
 float32 Udc_result[BUFFER_SIZE];
 float32 ig_result[BUFFER_SIZE];
-float32 pll_result;
+float32 pll_result1;
+float32 pll_result2;
 float32 pid_n1_out;
 float32 err1;
 float32 err2;
@@ -138,8 +144,8 @@ float32 inverter_std_U2 = 33.941125;
 // float32 triggerV = 180;
 // float32 triggerV = 50;
 // float32 triggerV = 30;
-float32 triggerV = 18;
-// float32 triggerV = 16.9705627;  // 12*sqrt(2)
+// float32 triggerV = 18;
+float32 triggerV = 16.9705627;  // 12*sqrt(2)
 // float32 triggerV = 10;
 // float32 triggerV = 7.0711;  // 5*sqrt(2)
 
@@ -154,6 +160,7 @@ int Display_numArray[5];
 int Display_numArray2[5];
 
 float32 U2_q = 0;
+float32 ig_q = 0;
 
 int digitPos = 1;
 
@@ -162,6 +169,10 @@ bool b1 = 0;
 bool b2 = 0;
 bool b3 = 0;
 bool b4 = 0;
+
+float32 std_U2 = 0;
+float32 time_elapsed = 0;
+float32 openLoopRatio = 0.711;
 
 void main(void) {
   // Initialize System Control: PLL, WatchDog, enable Peripheral Clocks
@@ -272,7 +283,8 @@ void main(void) {
   OLED_Refresh();
 
   // pll, pid init
-  pll_Init(2 * PI * 50, 2);  // 50Hz
+  pll_Init(2 * PI * 50, 2, &pll1, &sogi1, &pid_pll1);  // 50Hz
+  pll_Init(2 * PI * 50, 2, &pll2, &sogi2, &pid_pll2);  // 50Hz
   pid_nx_Init(0.15, 0, 0, pid_n1_limit, -pid_n1_limit, &pid_n1);
   pid_nx_Init(0.01, 7, 0, pid_n2_limit / 7, -pid_n2_limit / 7, &pid_n2);
 
@@ -340,6 +352,8 @@ void main(void) {
   b2 = 0;
   b3 = 0;
   b4 = 0;
+
+  std_U2 = 0;
 
   unsigned char s1[16] = {0};
   for (int i = 0; i < 16; i++) {
@@ -426,23 +440,39 @@ interrupt void adca1_isr(void) {
   U2_result[frameIndex] = (ADCAResults14_converted[frameIndex] - Uref_u2) * K_u2;
   ig_result[frameIndex] = -(ADCBResults3_converted[frameIndex] - Uref_i) * K_i;
 
+  // float32 pll2_input = 33.9 * sin(wt);
+  // float32 pll2_output = pll_Run(pll2_input, &pll2, &sogi2, &pid_pll2, &ig_q);
+  // changeDACAVal(2048 + 2000.0 * sin(wt));
+  // changeDACBVal(2048 + 2000.0 * cos(pll2_output));
+
   if (MMOODDEE == 1) {
     // U2 pll
-    float32 pll_input = U2_result[frameIndex];
-    // float32 pll_input = inverter_std_U2 * sin(wt);
+    float32 pll_input1 = U2_result[frameIndex];
+    // float32 pll_input1 = inverter_std_U2 * sin(wt);
     // pll 的结果
-    pll_result = pll_Run(pll_input);
+    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
     // 用正弦便于判断正确
-    pll_result = cos(pll_result);
-    // changeDACBVal(2048 + 2000.0 * pll_result);
+    pll_result1 = cos(pll_result1);
+    changeDACAVal(2048 + 2000.0 * pll_result1);
     // changeDACAVal(ADCBResults3[frameIndex]);
-    changeDACBVal(ADCAResults14[frameIndex]);
+    // changeDACBVal(ADCAResults14[frameIndex]);
+
+    // ig pll
+    float32 pll_input2 = ig_result[frameIndex];
+    pll_result2 = pll_Run(pll_input2, &pll2, &sogi2, &pid_pll2, &ig_q);
+    pll_result2 = cos(pll_result2);
+    changeDACBVal(2048 + 2000.0 * pll_result2);
 
     float32 err_U2_q = inverter_std_U2 - U2_q;
     float32 pid_n2_input = b2 ? err_U2_q : 0;
     float32 pid_n2_out = pid_nx_Run(pid_n2_input, &pid_n2);
     pid_n2_out = saturation(pid_n2_out, pid_n2_limit, -pid_n2_limit);
     float32 pwm_sig = (pid_n2_out + 0.5) * sin(wt);
+
+    if (ig_q < 0.5) {
+      pwm_sig = openLoopRatio * sin(wt);
+    }
+
     changeCMP_value(pwm_sig);
     if (b2) {
       GpioDataRegs.GPASET.bit.GPIO0 = 1;
@@ -455,7 +485,6 @@ interrupt void adca1_isr(void) {
 
   if (MMOODDEE == 2) {
     if (INVERTER_NO == 1) {
-      static float32 std_U2 = 0;
       if (b2) {
         if (std_U2 < inverter_std_U2) {
           std_U2 += inverter_std_U2 / rampInterval * 0.00005 * SW_FREQ;
@@ -486,19 +515,19 @@ interrupt void adca1_isr(void) {
       }
 
       // U2 pll
-      float32 pll_input = U2_result[frameIndex];
-      // float32 pll_input = inverter_std_U2 * sin(wt);
+      float32 pll_input1 = U2_result[frameIndex];
+      // float32 pll_input1 = inverter_std_U2 * sin(wt);
       // pll 的结果
-      pll_result = pll_Run(pll_input);
+      pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
       // 用正弦便于判断正确
-      pll_result = cos(pll_result);
-      changeDACBVal(2048 + 2000.0 * pll_result);
+      pll_result1 = cos(pll_result1);
+      changeDACAVal(2048 + 2000.0 * pll_result1);
       // changeDACBVal(ADCAResults14[frameIndex]);
 
       //
       // (逆变侧)交流电流环
       //
-      err2 = pll_result * inverter_std_I_MODE2 - ig_result[frameIndex];
+      err2 = pll_result1 * inverter_std_I_MODE2 - ig_result[frameIndex];
       float32 pr2_input;
       if (b2) {
         pr2_input = err2;
@@ -521,22 +550,24 @@ interrupt void adca1_isr(void) {
 
   if (MMOODDEE == 3) {
     // U2 pll
-    float32 pll_input = U2_result[frameIndex];
-    // float32 pll_input = inverter_std_U2 * sin(wt);
+    float32 pll_input1 = U2_result[frameIndex];
+    // float32 pll_input1 = inverter_std_U2 * sin(wt);
     // pll 的结果
-    pll_result = pll_Run(pll_input);
+    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
     // 用正弦便于判断正确
-    pll_result = cos(pll_result);
-    // changeDACBVal(2048 + 2000.0 * pll_result);
-    changeDACAVal(ADCBResults3[frameIndex]);
+    pll_result1 = cos(pll_result1);
+    // changeDACBVal(2048 + 2000.0 * pll_result1);
+    changeDACAVal(2048 + 2000.0 * pll_result1);
     changeDACBVal(ADCAResults14[frameIndex]);
 
-    // //
-    // // (逆变侧)交流电压环
-    // //
-    // err1 = sin(wt) * std_U2 - U2_result[frameIndex];
-    // float32 pr1_input = err1;
-    // pr1_out = pr_run(pr1_input, &pr1);
+    if (b4) {
+      if (U2_q >= 30 && time_elapsed < 5) {
+        time_elapsed += 0.00005 * SW_FREQ;
+      }
+      if (time_elapsed >= 5) {
+        b2 = true;
+      }
+    }
 
     //
     // (逆变侧)交流电流环
@@ -548,7 +579,7 @@ interrupt void adca1_isr(void) {
     } else if (INVERTER_NO == 2) {
       inverter_std_I = inverter_std_Io2 * sqrt(2);
     }
-    err2 = pll_result * inverter_std_I - ig_result[frameIndex];
+    err2 = pll_result1 * inverter_std_I - ig_result[frameIndex];
     float32 pr4_input;
     if (b2) {
       pr4_input = err2;
@@ -602,14 +633,21 @@ interrupt void xint2_isr(void) {
   } else if (MMOODDEE == 2) {
     if (INVERTER_NO == 1) {
       b2 = 1;
+      std_U2 = 0;
       GpioDataRegs.GPASET.bit.GPIO0 = 1;
       GpioDataRegs.GPASET.bit.GPIO2 = 1;
     } else if (INVERTER_NO == 2) {
       b4 = 1;
+      b3 = 0;
       b2 = 0;
+      b1 = 0;
     }
   } else if (MMOODDEE == 3) {
-    b2 = !b2;
+    b4 = !b4;
+    b3 = 0;
+    b2 = 0;
+    b1 = 0;
+    time_elapsed = 0;
   }
 
   PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
@@ -619,11 +657,14 @@ interrupt void xint3_isr(void) {
   if (MMOODDEE == 2) {
     if (INVERTER_NO == 1) {
       b2 = 0;
+      std_U2 = 0;
       GpioDataRegs.GPACLEAR.bit.GPIO0 = 1;
       GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;
     } else if (INVERTER_NO == 2) {
       b4 = 0;
+      b3 = 0;
       b2 = 0;
+      b1 = 0;
     }
   }
 

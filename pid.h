@@ -19,9 +19,9 @@ struct _pid {
   float32 integrator_lower_limit;
 };
 
-void pid_pll_Init(float32 p, float32 i, float32 d);
+void pid_pll_Init(float32 p, float32 i, float32 d, struct _pid* pid_pllx);
 
-float32 pid_pll_Run(float32 err);
+float32 pid_pll_Run(float32 err, struct _pid* pid_pllx);
 
 void pid_nx_Init(float32 p, float32 i, float32 d, float32 integrator_upper_limit, float32 integrator_lower_limit, struct _pid* pid_nx);
 
