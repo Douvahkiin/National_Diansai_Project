@@ -5,6 +5,17 @@
     "*.cjson": "jsonc",
     "*.wxss": "css",
     "*.wxs": "javascript",
-    "epwm_setup.h": "c"
+    "epwm_setup.h": "c",
+    "f2837xd_examples.h": "c",
+    "pid.h": "c",
+    "filter.h": "c",
+    "pll.h": "c",
+    "string.h": "c",
+    "adc_setup.h": "c",
+    "f28x_project.h": "c",
+    "oled.h": "c",
+    "utils.h": "c",
+    "macro.h": "c",
+    "math.h": "c"
   }
 }

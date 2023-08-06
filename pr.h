@@ -18,8 +18,8 @@ struct _pr {
   float32 uk_2;
 };
 
-void pr_init(float32 d1, float32 d2, float32 d3, float32 n1, float32 n2, float32 n3);
+void pr_init(float32 d1, float32 d2, float32 d3, float32 n1, float32 n2, float32 n3, struct _pr* prx);
 
-float32 pr_run(float32 uk);
+float32 pr_run(float32 uk, struct _pr* prx);
 
-#endif /* _PR_ */
+#endif  // _PR_
