@@ -4,6 +4,7 @@ struct _pr pr1;
 struct _pr pr2;
 struct _pr pr3;
 struct _pr pr4;
+struct _pr pr_origin;
 
 void pr_init(float32 d1, float32 d2, float32 d3, float32 n1, float32 n2, float32 n3, struct _pr* prx) {
   prx->d1 = d1;

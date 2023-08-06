@@ -36,6 +36,7 @@ extern struct _pr pr1;
 extern struct _pr pr2;
 extern struct _pr pr3;
 extern struct _pr pr4;
+extern struct _pr pr_origin;
 extern struct _pid pid_n1;
 extern struct _pid pid_n2;
 extern struct _pll pll1;
@@ -173,6 +174,9 @@ bool b4 = 0;
 float32 std_U2 = 0;
 float32 time_elapsed = 0;
 float32 openLoopRatio = 0.711;
+
+float32 kpp = 0.5;
+float32 krr = 60;
 
 void main(void) {
   // Initialize System Control: PLL, WatchDog, enable Peripheral Clocks
@@ -346,7 +350,12 @@ void main(void) {
   // pr_init(1, -1.9966, 0.99686, 0.20157, -0.39932, 0.1978, &pr3);  // p=0.2, r=1
 
   // pr4 init
-  pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr4);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.20784, -0.39932, 0.19153, &pr4);  // p=0.2, r=5
+  // pr_init(1, -1.9966, 0.99686, 0.21568, -0.39932, 0.18369, &pr4);  // p=0.2, r=10
+  pr_init(1, -1.9966, 0.99686, 0.22352, -0.39932, 0.17585, &pr4);  // p=0.2, r=15
+
+  // pr origin init
+  pr_init(1, -1.9966, 0.99686, 0.0015682, 0, -0.0015682, &pr_origin);
 
   b1 = 0;
   b2 = 0;
@@ -558,7 +567,7 @@ interrupt void adca1_isr(void) {
     pll_result1 = cos(pll_result1);
     // changeDACBVal(2048 + 2000.0 * pll_result1);
     changeDACAVal(2048 + 2000.0 * pll_result1);
-    changeDACBVal(ADCAResults14[frameIndex]);
+    // changeDACBVal(ADCAResults14[frameIndex]);
 
     if (b4) {
       if (U2_q >= 30 && time_elapsed < 5) {
@@ -574,6 +583,8 @@ interrupt void adca1_isr(void) {
     //
     inverter_std_Io1 = inverter_std_Io / (1 + 1 / inverter_K);
     inverter_std_Io2 = inverter_std_Io / (1 + inverter_K);
+    inverter_std_Io1 = 0.9207 * inverter_std_Io1 + 0.0331;
+    inverter_std_Io2 = 0.9207 * inverter_std_Io2 + 0.0331;
     if (INVERTER_NO == 1) {
       inverter_std_I = inverter_std_Io1 * sqrt(2);
     } else if (INVERTER_NO == 2) {
@@ -587,8 +598,11 @@ interrupt void adca1_isr(void) {
       pr4_input = 0;
     }
     float32 pr4_out = pr_run(pr4_input, &pr4);
+    float32 pr5_out = pr_run(pr4_input, &pr_origin);
+    float32 pr_out = kpp * pr4_input + krr * pr5_out;
+    changeDACBVal(2048 + 2000.0 * err2);
 
-    changeCMP_value(pr4_out);
+    changeCMP_value(pr_out);
 
     if (b2) {
       GpioDataRegs.GPASET.bit.GPIO0 = 1;
