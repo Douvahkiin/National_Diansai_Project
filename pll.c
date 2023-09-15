@@ -6,7 +6,7 @@ extern struct _pid pid_pll1;
 struct _pll pll2;
 struct _sogi sogi2;
 extern struct _pid pid_pll2;
-extern float32 U2_q;
+extern float32 U2_d;
 float32 SOGI_K = 0.5;
 float32 SOGI_IntLimit = 40;
 

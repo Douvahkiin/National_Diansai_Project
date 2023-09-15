@@ -41,9 +41,9 @@ void numarray2str2(unsigned char s[], int numarray[5]) {
 }
 
 float32 alpha_beta2dq(float32 alpha, float32 beta, float32 wt) {
-  float32 d = -alpha * sin(wt) + beta * cos(wt);
-  float32 q = alpha * cos(wt) + beta * sin(wt);
-  return q;
+  float32 d = alpha * cos(wt) + beta * sin(wt);
+  float32 q = -alpha * sin(wt) + beta * cos(wt);
+  return d;
 }
 
 void placeString(unsigned char dest[], unsigned char source[], int pos) {

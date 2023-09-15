@@ -160,7 +160,7 @@ float32 DAADCAL_receiver = 0;
 int Display_numArray[5];
 int Display_numArray2[5];
 
-float32 U2_q = 0;
+float32 U2_d = 0;
 float32 ig_q = 0;
 
 int digitPos = 1;
@@ -370,7 +370,7 @@ void main(void) {
   }
 
   // char const* s_stdI = "std I = ";
-  // unsigned const char* s_U2_q = "U2 q:";
+  // unsigned const char* s_U2_d = "U2 q:";
 
   MMOODDEE = 0;
 
@@ -459,7 +459,7 @@ interrupt void adca1_isr(void) {
     float32 pll_input1 = U2_result[frameIndex];
     // float32 pll_input1 = inverter_std_U2 * sin(wt);
     // pll 的结果
-    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
+    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_d);
     // 用正弦便于判断正确
     pll_result1 = cos(pll_result1);
     changeDACAVal(2048 + 2000.0 * pll_result1);
@@ -472,8 +472,8 @@ interrupt void adca1_isr(void) {
     pll_result2 = cos(pll_result2);
     changeDACBVal(2048 + 2000.0 * pll_result2);
 
-    float32 err_U2_q = inverter_std_U2 - U2_q;
-    float32 pid_n2_input = b2 ? err_U2_q : 0;
+    float32 err_U2_d = inverter_std_U2 - U2_d;
+    float32 pid_n2_input = b2 ? err_U2_d : 0;
     float32 pid_n2_out = pid_nx_Run(pid_n2_input, &pid_n2);
     pid_n2_out = saturation(pid_n2_out, pid_n2_limit, -pid_n2_limit);
     float32 pwm_sig = (pid_n2_out + 0.5) * sin(wt);
@@ -527,7 +527,7 @@ interrupt void adca1_isr(void) {
       float32 pll_input1 = U2_result[frameIndex];
       // float32 pll_input1 = inverter_std_U2 * sin(wt);
       // pll 的结果
-      pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
+      pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_d);
       // 用正弦便于判断正确
       pll_result1 = cos(pll_result1);
       changeDACAVal(2048 + 2000.0 * pll_result1);
@@ -562,7 +562,7 @@ interrupt void adca1_isr(void) {
     float32 pll_input1 = U2_result[frameIndex];
     // float32 pll_input1 = inverter_std_U2 * sin(wt);
     // pll 的结果
-    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_q);
+    pll_result1 = pll_Run(pll_input1, &pll1, &sogi1, &pid_pll1, &U2_d);
     // 用正弦便于判断正确
     pll_result1 = cos(pll_result1);
     // changeDACBVal(2048 + 2000.0 * pll_result1);
@@ -570,7 +570,7 @@ interrupt void adca1_isr(void) {
     // changeDACBVal(ADCAResults14[frameIndex]);
 
     if (b4) {
-      if (U2_q >= 30 && time_elapsed < 5) {
+      if (U2_d >= 30 && time_elapsed < 5) {
         time_elapsed += 0.00005 * SW_FREQ;
       }
       if (time_elapsed >= 5) {
