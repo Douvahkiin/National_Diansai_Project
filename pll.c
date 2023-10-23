@@ -49,7 +49,7 @@ void SOGI(float32 input, float32 *alpha, float32 *beta, struct _sogi *sogix) {
   *beta = sogix->SOGI_Integral2;  // 输出 V_beta
 }
 
-float32 pll_Run(float32 input, struct _pll *pllx, struct _sogi *sogix, struct _pid *pid_pllx, float32 *dq_q) {
+float32 pll_Run(float32 input, struct _pll *pllx, struct _sogi *sogix, struct _pid *pid_pllx, float32 *dq_d) {
   // 调用 SOGI, 滤波并产生正交的V_alpha与V_beta
   SOGI(input, &pllx->inputVal_alpha, &pllx->inputVal_beta, sogix);
   float32 alpha = pllx->alpha_2;
@@ -74,6 +74,6 @@ float32 pll_Run(float32 input, struct _pll *pllx, struct _sogi *sogix, struct _p
   }
   pllx->negSine = -sin(pllx->integral);
   pllx->posCosine = cos(pllx->integral);
-  *dq_q = alpha_beta2dq(alpha, beta, pllx->integral);
+  *dq_d = alpha_beta2dq(alpha, beta, pllx->integral);
   return pllx->integral;
 }
