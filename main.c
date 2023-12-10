@@ -189,9 +189,9 @@ void main(void) {
   InitEPwm3Gpio();
   InitEPwm4Gpio();
   ConfigureDAC();
-  //
-  // Enable an GPIO output on GPIO22, set it high/low
-  //
+
+  // GPIO22为“探针”，在每次中断开始时toggle一次，接在示波器上可用于判断是否有足够的算力
+  // GPIO0与GPIO2为MOS管驱动的使能信号。低电位失能，高电位使能。
   EALLOW;
   GpioCtrlRegs.GPAPUD.bit.GPIO22 = 0;    // Enable pullup on GPIO22
   GpioCtrlRegs.GPAMUX2.bit.GPIO22 = 0;   // GPIO22 = GPIO22
@@ -207,16 +207,6 @@ void main(void) {
   GpioCtrlRegs.GPAMUX1.bit.GPIO2 = 0;   // GPIO2 = GPIO2
   GpioCtrlRegs.GPADIR.bit.GPIO2 = 1;    // GPIO2 = output
   GpioDataRegs.GPACLEAR.bit.GPIO2 = 1;  // Load output latch
-
-  GpioCtrlRegs.GPAPUD.bit.GPIO4 = 0;    // Enable pullup on GPIO4
-  GpioCtrlRegs.GPAMUX1.bit.GPIO4 = 0;   // GPIO4 = GPIO4
-  GpioCtrlRegs.GPADIR.bit.GPIO4 = 1;    // GPIO4 = output
-  GpioDataRegs.GPACLEAR.bit.GPIO4 = 1;  // Load output latch
-
-  GpioCtrlRegs.GPAPUD.bit.GPIO6 = 0;    // Enable pullup on GPIO6
-  GpioCtrlRegs.GPAMUX1.bit.GPIO6 = 0;   // GPIO6 = GPIO6
-  GpioCtrlRegs.GPADIR.bit.GPIO6 = 1;    // GPIO6 = output
-  GpioDataRegs.GPACLEAR.bit.GPIO6 = 1;  // Load output latch
   EDIS;
 
   // Clear all interrupts and initialize PIE vector table: Disable CPU interrupts

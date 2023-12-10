@@ -52,6 +52,7 @@ void SOGI(float32 input, float32 *alpha, float32 *beta, struct _sogi *sogix) {
 float32 pll_Run(float32 input, struct _pll *pllx, struct _sogi *sogix, struct _pid *pid_pllx, float32 *dq_d) {
   // 调用 SOGI, 滤波并产生正交的V_alpha与V_beta
   SOGI(input, &pllx->inputVal_alpha, &pllx->inputVal_beta, sogix);
+  // 延迟队列，调整准确性
   float32 alpha = pllx->alpha_2;
   pllx->alpha_2 = pllx->alpha_1;
   pllx->alpha_1 = pllx->inputVal_alpha;

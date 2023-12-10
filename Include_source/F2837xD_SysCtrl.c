@@ -213,8 +213,8 @@ void InitPeripheralClocks(void)
 
     CpuSysRegs.PCLKCR2.bit.EPWM1 = 1;
     CpuSysRegs.PCLKCR2.bit.EPWM2 = 1;
-    CpuSysRegs.PCLKCR2.bit.EPWM3 = 1;
-    CpuSysRegs.PCLKCR2.bit.EPWM4 = 1;
+    // CpuSysRegs.PCLKCR2.bit.EPWM3 = 1;
+    // CpuSysRegs.PCLKCR2.bit.EPWM4 = 1;
     // CpuSysRegs.PCLKCR2.bit.EPWM5 = 1;
     // CpuSysRegs.PCLKCR2.bit.EPWM6 = 1;
     // CpuSysRegs.PCLKCR2.bit.EPWM7 = 1;
