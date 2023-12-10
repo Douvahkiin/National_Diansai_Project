@@ -1,1 +1,0 @@
-D:/ti/ccs1230/ccs/tools/compiler/ti-cgt-c2000_22.6.0.LTS/include
