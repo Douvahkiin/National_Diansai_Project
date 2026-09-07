@@ -22,7 +22,7 @@ TI C2000系列 DSP28379\
 ADC与PWM的配置：
 - PWM的载波设置为三角波（UPDOWN），载波周期为50us（20kHz），同一对PWM输出互补，两对PWM之间为单极性调制。
 - 每到PWM的载波峰值时，触发ADC（SOC），接着ADC触发中断。这样，ADC的采样周期、单个开关管的开关周期和其中断函数的执行周期与PWM一致，都为Ts=50us，Ts是各个控制算法所必须的关键。Ts在代码中可调，在硬件允许的情况下尽量小。
-- ADC的中断服务函数便是整个控制的关键了，**一切控制相关的计算都放在这里进行**。
+- ADC的中断服务函数便是整个控制的关键了，由它来保证每个实时周期触发控制运算。
 
 关键在于PI控制器、PR控制器、SOGI以及PLL等算法如何实现：
 - PI控制器：不说了，这个很简单，值得一提的是积分方式有两种可选，一是矩形积分，二是梯形积分。我选的是矩形积分，这其实完全够了。
@@ -37,11 +37,11 @@ OLED屏用两个GPIO实现IIC通信。用OLED卖家提供的代码稍加修改�
 
 ## 引入FreeRTOS
 
-原裸机架构：20kHz 控制计算全部在 `adca1_isr` 中，主循环只做 OLED 刷新和按键轮询。
+原裸机架构：20kHz 控制计算全部放在 `adca1_isr`， OLED刷新和按键放在主循环中。
 改为 FreeRTOS（TI 官方 C28x 移植，`ThirdParty/FreeRTOS`，纯静态分配）：
 
 ```
-PWM载波峰值 → ADC SOC → adca1_isr（仅采样+通知+探针） ──vTaskNotifyGiveFromISR──→ ControlTask（最高优先级）
+PWM载波峰值 → ADC SOC → adca1_isr（采样+通知+探针） ──vTaskNotifyGiveFromISR──→ ControlTask（最高优先级）
                                                                                      ├─ 27us 原ISR逻辑原样执行
                                                                                      └─ 结束检测超限(45us阈值→关断GPIO0/2)
 KeyTask (prio 3): 模式键轮询(GPIO124/125/29, 20ms) + XINT1~5事件组处理(原xint_isr逻辑)
@@ -65,14 +65,13 @@ UITask  (prio 1): OLED 10Hz刷新 (vTaskDelayUntil)
   （低优先级任务只能在 ControlTask 阻塞时运行）；UITask 读取侧同样加临界区。
 
 ### 调试手段
-- GPIO22：原“算力探针”，仍在 ISR 入口 toggle（观察 ISR 本身负载）。
+- GPIO22：原算力探针，仍在 ISR 入口 toggle（观察 ISR 本身负载）。
 - GPIO24：RTOS 端到端探针，ISR 入口置位 / ControlTask 写完 PWM 后清零，
   高电平宽度 = 采样→任务切换→计算→PWM 写出的总延迟（预算 31~33us < 50us）。
 - `control_overrun_cnt`：CpuTimer0 测量单周期执行时长，>45us 自动关断并计数，可在 CCS 观察。
 - 栈溢出检测开启（configCHECK_FOR_STACK_OVERFLOW=2），溢出即关断 GPIO0/2。
 
 ### 编译
-- 仅 CPU1_RAM / CPU1_FLASH 配置在当前工程中是完整可编译的（另外的 Debug/Release 为模板遗留配置）。
 - FreeRTOS Config 位于 `ThirdParty/FreeRTOS/Source/portable/CCS/C2000_C28x/FreeRTOSConfig.h`。
 ## 心得
 
