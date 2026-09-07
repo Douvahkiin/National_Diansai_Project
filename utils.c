@@ -10,7 +10,8 @@ int MMOODDEE;
 // 浮点数转换为整数数组
 void float2numarray(float32 val, int displayNumArray[]) {
   int num = val * 1000;  // truncate
-  for (int i = 0; i < 5; ++i) {
+  int i;
+  for (i = 0; i < 5; ++i) {
     displayNumArray[i] = num % 10;  // 每次取个位
 
     if (displayNumArray[i] < 0) {
@@ -49,14 +50,16 @@ float32 alpha_beta2dq(float32 alpha, float32 beta, float32 wt) {
 void placeString(unsigned char dest[], unsigned char source[], int pos) {
   int n1 = 16;
   int n2 = strlen(source);
-  for (int i = 0; (i < n2) && (i + pos < n1); i++) {
+  int i;
+  for (i = 0; (i < n2) && (i + pos < n1); i++) {
     dest[i + pos] = source[i];
   }
 }
 
 void clearString(unsigned char s[]) {
   int n = strlen(s);
-  for (int i = 0; i < n; i++) {
+  int i;
+  for (i = 0; i < n; i++) {
     s[i] = ' ';
   }
 }

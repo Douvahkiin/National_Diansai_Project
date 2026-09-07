@@ -15,4 +15,6 @@
 	<filesToOpen value=""/>
 	<isTargetManual value="false"/>
 	<sourceLookupPath value=""/>
+	<activeTargetConfiguration value="targetConfigs/TMS320F28379D.ccxml"/>
+	<isTargetConfigurationManual value="false"/>
 </projectOptions>

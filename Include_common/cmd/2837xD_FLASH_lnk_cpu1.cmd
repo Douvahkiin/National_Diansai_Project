@@ -80,6 +80,8 @@ SECTIONS
    codestart           : > BEGIN       PAGE = 0, ALIGN(8)
    /* Allocate uninitalized data sections: */
    .stack              : > RAMM1       PAGE = 1
+   /* FreeRTOS task stacks: MUST stay in lower 64K (C28x SP window) */
+   .freertosStaticStack : >> RAMGS2 | RAMGS3,  PAGE = 1
    .switch             : > FLASHB      PAGE = 0, ALIGN(8)
    .reset              : > RESET,      PAGE = 0, TYPE = DSECT /* not used, */
 

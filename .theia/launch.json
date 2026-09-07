@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "adc_soc_epwm_dsp28379d_cpu01",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "adc_soc_epwm_dsp28379d_cpu01",
+                "resourceId": "/adc_soc_epwm_dsp28379d_cpu01"
+            },
+            "connections": [
+                {
+                    "name": "Texas Instruments XDS100v2 USB Debug Probe",
+                    "cores": [
+                        {
+                            "name": "C28xx_CPU1",
+                            "debuggerSettings": {
+                                "data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<PropertyValues/>\n"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
