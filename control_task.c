@@ -111,6 +111,12 @@ static float32 wt = 0;
 static float32 inverter_std_I_MODE2 = 2.828427;
 
 //
+// CpuTimer0 free-running at SYSCLK 100 MHz: 1 tick = 10 ns = 0.01 us.
+// Control deadline: 45 us x 100 ticks/us = 4500 ticks.
+//
+#define CONTROL_DEADLINE_TICKS ( 45UL * 100UL )
+
+//
 // ControlTask's own stack/TCB (static allocation - see .freertosStaticStack)
 //
 #define CONTROL_STACK_WORDS 512
@@ -209,12 +215,12 @@ void control_task(void *pvParameters) {
     control_step(a14raw, b1raw, idx);
 
     //
-    // Period miss detection: 45 us @ 100 MHz = 4,500,000 cycles.
-    // adc_isr_tick0 = CpuTimer0 count captured at ADC ISR entry.
-    // CpuTimer0 counts down, so elapsed = start - now (mod 2^32).
+    // Period miss detection: 45 us deadline = 4500 CpuTimer0 ticks
+    // (100 MHz, 10 ns per tick).  Mod-2^32 unsigned distance is safe
+    // across the counter wrap-around.
     //
     elapsed = (Uint32)(adc_isr_tick0 - CpuTimer0Regs.TIM.all);
-    if (elapsed > 4500000UL) {
+    if (elapsed > CONTROL_DEADLINE_TICKS) {
       control_trip();
     }
   }
